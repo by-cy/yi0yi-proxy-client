@@ -71,29 +71,6 @@ jobs:
           pnpm i
           pnpm check ${{ matrix.target }}
 
-      # macOS DMG 创建工具安装和配置
-      - name: Install macOS DMG tools
-        run: |
-          # 安装 create-dmg 工具
-          brew install create-dmg
-          
-          # 确保系统工具可用
-          which hdiutil
-          which codesign || echo "codesign not available (expected for unsigned builds)"
-          
-          # 设置权限和环境
-          sudo xattr -r -d com.apple.quarantine /usr/local/bin/* || true
-          
-          # 创建临时签名环境（用于无签名构建）
-          security create-keychain -p temp build.keychain || true
-          security default-keychain -s build.keychain || true
-          security unlock-keychain -p temp build.keychain || true
-          
-          # 设置环境变量以跳过签名
-          echo "MACOS_CERTIFICATE=" >> $GITHUB_ENV
-          echo "MACOS_CERTIFICATE_PWD=" >> $GITHUB_ENV
-          echo "CI=true" >> $GITHUB_ENV
-
       - name: Tauri build
         id: build
         uses: tauri-apps/tauri-action@v0
@@ -147,27 +124,6 @@ jobs:
             - **构建**: Vite + pnpm
           tauriScript: pnpm
           includeUpdaterJson: true
-
-      # 调试 macOS 构建问题
-      - name: Debug macOS build (if failed)
-        if: failure()
-        run: |
-          echo "=== DMG Build Debug Information ==="
-          echo "Checking bundle directory:"
-          ls -la src-tauri/target/${{ matrix.target }}/release/bundle/ || true
-          
-          echo "Checking DMG directory:"
-          ls -la src-tauri/target/${{ matrix.target }}/release/bundle/dmg/ || true
-          
-          echo "Checking for bundle_dmg.sh:"
-          find src-tauri/target/${{ matrix.target }}/release/bundle -name "bundle_dmg.sh" -exec ls -la {} \; || true
-          
-          echo "System tools check:"
-          which create-dmg || echo "create-dmg not found"
-          which hdiutil || echo "hdiutil not found"
-          
-          echo "Bundle script content (if exists):"
-          find src-tauri/target/${{ matrix.target }}/release/bundle -name "bundle_dmg.sh" -exec cat {} \; || true
 
       # 列出构建产物（用于调试）
       - name: List build artifacts
