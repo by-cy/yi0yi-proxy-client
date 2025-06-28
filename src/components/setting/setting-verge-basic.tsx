@@ -158,12 +158,12 @@ const SettingVergeBasic = ({ onError }: Props) => {
             {routers
               .filter((page) => page.label) // 只显示有label的路由
               .map((page) => {
-                return (
-                  <MenuItem key={page.path} value={page.path}>
+              return (
+                <MenuItem key={page.path} value={page.path}>
                     {t(page.label!)}
-                  </MenuItem>
-                );
-              })}
+                </MenuItem>
+              );
+            })}
           </Select>
         </GuardState>
       </SettingItem>
