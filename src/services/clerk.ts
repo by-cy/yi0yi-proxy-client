@@ -1,13 +1,26 @@
 import { Clerk } from '@clerk/clerk-js';
 
-// Simple Clerk configuration
+// Clerk configuration - 使用实际的Clerk密钥
 const CLERK_CONFIG = {
-  publishableKey: 'pk_test_your_clerk_publishable_key_here',
-  frontendApi: 'https://your-clerk-frontend-api.clerk.accounts.dev'
+  publishableKey: 'pk_test_c3VwcmVtZS1qYXZlbGluLTQ3LmNsZXJrLmFjY291bnRzLmRldiQ',
+  frontendApi: 'https://supreme-javelin-47.clerk.accounts.dev'
 };
 
 const validateClerkConfig = (): boolean => {
-  return !!(CLERK_CONFIG.publishableKey && CLERK_CONFIG.publishableKey !== 'pk_test_your_clerk_publishable_key_here');
+  const isValid = !!(
+    CLERK_CONFIG.publishableKey && 
+    CLERK_CONFIG.publishableKey.startsWith('pk_') &&
+    CLERK_CONFIG.frontendApi &&
+    CLERK_CONFIG.frontendApi.includes('clerk.accounts.dev')
+  );
+  
+  if (!isValid) {
+    console.warn('Clerk configuration is not valid. Please check your Clerk keys.');
+  } else {
+    console.log('Clerk configuration validated successfully');
+  }
+  
+  return isValid;
 };
 
 // Global Clerk instance
