@@ -29,6 +29,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
           - os: macos-latest
             target: aarch64-apple-darwin
           - os: macos-latest
@@ -112,7 +116,7 @@ jobs:
           # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          args: "--target ${{ matrix.target }} --bundles app --verbose"
+          args: "--target ${{ matrix.target }} --verbose"
           tagName: ${{ github.event.inputs.release_version || github.ref_name }}
           releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }} (macOS Test)"
           releaseBody: |

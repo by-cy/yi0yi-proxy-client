@@ -2,16 +2,13 @@ import { Clerk } from '@clerk/clerk-js';
 
 // Clerk configuration - 使用实际的Clerk密钥
 const CLERK_CONFIG = {
-  publishableKey: 'pk_test_c3VwcmVtZS1qYXZlbGluLTQ3LmNsZXJrLmFjY291bnRzLmRldiQ',
-  frontendApi: 'https://supreme-javelin-47.clerk.accounts.dev'
+  publishableKey: 'pk_test_c3VwcmVtZS1qYXZlbGluLTQ3LmNsZXJrLmFjY291bnRzLmRldiQ'
 };
 
 const validateClerkConfig = (): boolean => {
   const isValid = !!(
     CLERK_CONFIG.publishableKey && 
-    CLERK_CONFIG.publishableKey.startsWith('pk_') &&
-    CLERK_CONFIG.frontendApi &&
-    CLERK_CONFIG.frontendApi.includes('clerk.accounts.dev')
+    CLERK_CONFIG.publishableKey.startsWith('pk_')
   );
   
   if (!isValid) {
@@ -45,7 +42,6 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
       
       const publishableKey = CLERK_CONFIG.publishableKey;
       console.log('Creating new Clerk instance with key:', publishableKey.substring(0, 20) + '...');
-      console.log('Using Frontend API:', CLERK_CONFIG.frontendApi);
       
       // Initialize Clerk with basic configuration
       clerkInstance = new Clerk(publishableKey);
@@ -80,16 +76,22 @@ export const getClerk = (): Clerk | null => {
 
 export const signIn = async (emailAddress: string, password: string) => {
   const clerk = getClerk();
-  if (!clerk || !clerk.client) throw new Error('Clerk not initialized');
+  if (!clerk || !clerk.client) {
+    console.error('Clerk not initialized. Please call initializeClerk() first.');
+    throw new Error('Clerk not initialized');
+  }
   
   try {
     console.log('Attempting to sign in with email:', emailAddress);
+    console.log('Clerk client ready:', !!clerk.client);
+    
     const signInAttempt = await clerk.client.signIn.create({
       identifier: emailAddress,
       password,
     });
 
     console.log('Sign in attempt status:', signInAttempt.status);
+    console.log('Sign in attempt details:', JSON.stringify(signInAttempt, null, 2));
 
     if (signInAttempt.status === 'complete') {
       await clerk.setActive({ session: signInAttempt.createdSessionId });
@@ -98,10 +100,14 @@ export const signIn = async (emailAddress: string, password: string) => {
     } else {
       // Handle other statuses (needs verification, etc.)
       console.log('Sign in incomplete, status:', signInAttempt.status);
-      throw new Error('Sign in incomplete');
+      throw new Error(`Sign in incomplete: ${signInAttempt.status}`);
     }
   } catch (error) {
-    console.error('Sign in error:', error);
+    console.error('Sign in error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      error
+    });
     throw error;
   }
 };
