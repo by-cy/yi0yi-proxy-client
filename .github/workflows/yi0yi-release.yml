@@ -112,14 +112,15 @@ jobs:
           # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
+          args: "--target ${{ matrix.target }} --bundles app --verbose"
           tagName: ${{ github.event.inputs.release_version || github.ref_name }}
           releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }} (macOS Test)"
           releaseBody: |
             ## 🚀 Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }} (macOS 测试版本)
             
             ### 📦 下载说明
-            - **macOS Apple Silicon**: 下载 `*-aarch64-apple-darwin.dmg`
-            - **macOS Intel**: 下载 `*-x86_64-apple-darwin.dmg`
+            - **macOS Apple Silicon**: 下载 `*-aarch64-apple-darwin.app` (应用包)
+            - **macOS Intel**: 下载 `*-x86_64-apple-darwin.app` (应用包)
             
             ### ⚠️ macOS 用户注意
             由于应用未经 Apple 代码签名，首次运行时需要：
@@ -141,7 +142,6 @@ jobs:
             - **认证**: Clerk
             - **构建**: Vite + pnpm
           tauriScript: pnpm
-          args: --target ${{ matrix.target }}
           includeUpdaterJson: true
 
       # 调试 macOS 构建问题
