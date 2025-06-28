@@ -1,10 +1,10 @@
 import { Notice } from "@/components/base";
 import {
-    signOut as clerkSignOut,
-    getClerk,
-    getCurrentUser,
-    initializeClerk,
-    isUserSignedIn
+  signOut as clerkSignOut,
+  getClerk,
+  getCurrentUser,
+  initializeClerk,
+  isUserSignedIn
 } from "@/services/clerk";
 import { getProfiles, importProfile, updateProfile } from "@/services/cmds";
 import { updateProxyConfiguration } from "@/services/proxy-config";
@@ -169,8 +169,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Load default profile when user signs in
             if (updatedSignedIn && !profileLoadAttempted.current) {
-              loadDefaultProfile();
-            }
+      loadDefaultProfile();
+    }
           });
           
           // Clean up listener on unmount

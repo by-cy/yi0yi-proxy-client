@@ -1,25 +1,25 @@
+import { DialogRef, Notice } from "@/components/base";
+import { TooltipIcon } from "@/components/base/base-tooltip-icon";
+import { useVerge } from "@/hooks/use-verge";
+import { routers } from "@/pages/_routers";
+import { copyClashEnv } from "@/services/cmds";
+import { languages } from "@/services/i18n";
+import getSystem from "@/utils/get-system";
+import { ContentCopyRounded } from "@mui/icons-material";
+import { Button, Input, MenuItem, Select } from "@mui/material";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { open } from "@tauri-apps/plugin-dialog";
-import { Button, MenuItem, Select, Input } from "@mui/material";
-import { copyClashEnv } from "@/services/cmds";
-import { useVerge } from "@/hooks/use-verge";
-import { DialogRef, Notice } from "@/components/base";
-import { SettingList, SettingItem } from "./mods/setting-comp";
-import { ThemeModeSwitch } from "./mods/theme-mode-switch";
-import { ConfigViewer } from "./mods/config-viewer";
-import { HotkeyViewer } from "./mods/hotkey-viewer";
-import { MiscViewer } from "./mods/misc-viewer";
-import { ThemeViewer } from "./mods/theme-viewer";
-import { GuardState } from "./mods/guard-state";
-import { LayoutViewer } from "./mods/layout-viewer";
-import { UpdateViewer } from "./mods/update-viewer";
 import { BackupViewer } from "./mods/backup-viewer";
-import getSystem from "@/utils/get-system";
-import { routers } from "@/pages/_routers";
-import { TooltipIcon } from "@/components/base/base-tooltip-icon";
-import { ContentCopyRounded } from "@mui/icons-material";
-import { languages } from "@/services/i18n";
+import { ConfigViewer } from "./mods/config-viewer";
+import { GuardState } from "./mods/guard-state";
+import { HotkeyViewer } from "./mods/hotkey-viewer";
+import { LayoutViewer } from "./mods/layout-viewer";
+import { MiscViewer } from "./mods/misc-viewer";
+import { SettingItem, SettingList } from "./mods/setting-comp";
+import { ThemeModeSwitch } from "./mods/theme-mode-switch";
+import { ThemeViewer } from "./mods/theme-viewer";
+import { UpdateViewer } from "./mods/update-viewer";
 
 interface Props {
   onError?: (err: Error) => void;
@@ -155,13 +155,15 @@ const SettingVergeBasic = ({ onError }: Props) => {
           onGuard={(e) => patchVerge({ start_page: e })}
         >
           <Select size="small" sx={{ width: 140, "> div": { py: "7.5px" } }}>
-            {routers.map((page: { label: string; path: string }) => {
-              return (
-                <MenuItem key={page.path} value={page.path}>
-                  {t(page.label)}
-                </MenuItem>
-              );
-            })}
+            {routers
+              .filter((page) => page.label) // 只显示有label的路由
+              .map((page) => {
+                return (
+                  <MenuItem key={page.path} value={page.path}>
+                    {t(page.label!)}
+                  </MenuItem>
+                );
+              })}
           </Select>
         </GuardState>
       </SettingItem>
