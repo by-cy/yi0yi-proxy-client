@@ -1,5 +1,14 @@
 import { Clerk } from '@clerk/clerk-js';
-import { CLERK_CONFIG, validateClerkConfig } from './clerk-config';
+
+// Simple Clerk configuration
+const CLERK_CONFIG = {
+  publishableKey: 'pk_test_your_clerk_publishable_key_here',
+  frontendApi: 'https://your-clerk-frontend-api.clerk.accounts.dev'
+};
+
+const validateClerkConfig = (): boolean => {
+  return !!(CLERK_CONFIG.publishableKey && CLERK_CONFIG.publishableKey !== 'pk_test_your_clerk_publishable_key_here');
+};
 
 // Global Clerk instance
 let clerkInstance: Clerk | null = null;
