@@ -1,0 +1,139 @@
+name: Test Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Target platform'
+        required: true
+        type: choice
+        options:
+          - 'windows-x64'
+          - 'windows-arm64'
+          - 'macos-intel'
+          - 'macos-apple-silicon'
+          - 'all'
+        default: 'windows-x64'
+
+permissions: write-all
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+
+jobs:
+  determine-targets:
+    name: Determine Build Targets
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          case "${{ github.event.inputs.platform }}" in
+            "windows-x64")
+              echo 'matrix={"include":[{"platform":"windows-x64","os":"windows-latest","target":"x86_64-pc-windows-msvc"}]}' >> $GITHUB_OUTPUT
+              ;;
+            "windows-arm64")
+              echo 'matrix={"include":[{"platform":"windows-arm64","os":"windows-latest","target":"aarch64-pc-windows-msvc"}]}' >> $GITHUB_OUTPUT
+              ;;
+            "macos-intel")
+              echo 'matrix={"include":[{"platform":"macos-intel","os":"macos-latest","target":"x86_64-apple-darwin"}]}' >> $GITHUB_OUTPUT
+              ;;
+            "macos-apple-silicon")
+              echo 'matrix={"include":[{"platform":"macos-apple-silicon","os":"macos-latest","target":"aarch64-apple-darwin"}]}' >> $GITHUB_OUTPUT
+              ;;
+            "all")
+              echo 'matrix={"include":[{"platform":"windows-x64","os":"windows-latest","target":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-latest","target":"aarch64-pc-windows-msvc"},{"platform":"macos-intel","os":"macos-latest","target":"x86_64-apple-darwin"},{"platform":"macos-apple-silicon","os":"macos-latest","target":"aarch64-apple-darwin"}]}' >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+  test-build:
+    name: Test Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    needs: determine-targets
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.determine-targets.outputs.matrix) }}
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          cache-all-crates: true
+          cache-on-failure: true
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check target compatibility
+        run: pnpm check ${{ matrix.target }}
+
+      - name: Test Build Yi0Yi Proxy
+        uses: tauri-apps/tauri-action@v0
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          
+          # 如果有签名密钥则使用，否则跳过签名
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          
+          # Apple签名（如果可用）
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        
+        with:
+          # 不创建release，只构建
+          releaseDraft: true
+          tagName: test-build-${{ github.run_number }}
+          releaseName: "Test Build ${{ matrix.platform }} - ${{ github.run_number }}"
+          releaseBody: |
+            🧪 **测试构建** - ${{ matrix.platform }}
+            
+            此版本仅用于测试目的，不建议用于生产环境。
+            
+            构建时间: ${{ github.event.head_commit.timestamp }}
+            提交: ${{ github.sha }}
+          
+          tauriScript: pnpm
+          args: --target ${{ matrix.target }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: yi0yi-proxy-${{ matrix.platform }}-${{ github.run_number }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*
+          retention-days: 7
+
+      - name: Build Summary
+        run: |
+          echo "### 🎉 构建完成!" >> $GITHUB_STEP_SUMMARY
+          echo "- **平台**: ${{ matrix.platform }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **目标**: ${{ matrix.target }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **状态**: ✅ 成功" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "构建文件已上传为工件，可在Actions页面下载。" >> $GITHUB_STEP_SUMMARY 
