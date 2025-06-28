@@ -72,74 +72,6 @@ jobs:
           pnpm check ${{ matrix.target }}
 
       - name: Tauri build
-        uses: tauri-apps/tauri-action@v0
-        env:
-          NODE_OPTIONS: "--max_old_space_size=8192"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        with:
-          tagName: ${{ github.event.inputs.release_version || github.ref_name }}
-          releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}"
-          releaseBody: "More new features are now supported."
-          tauriScript: pnpm
-          args: --target ${{ matrix.target }}
-
-  release-for-fixed-webview2:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            arch: x64
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-            arch: arm64
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Add Rust Target
-        run: rustup target add ${{ matrix.target }}
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-          cache-all-crates: true
-          cache-on-failure: true
-
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          run_install: false
-
-      - name: Pnpm install and check
-        run: |
-          pnpm i
-          pnpm check ${{ matrix.target }}
-
-      - name: Download WebView2 Runtime
-        run: |
-          invoke-webrequest -uri https://github.com/westinyang/WebView2RuntimeArchive/releases/download/109.0.1518.78/Microsoft.WebView2.FixedVersionRuntime.109.0.1518.78.${{ matrix.arch }}.cab -outfile Microsoft.WebView2.FixedVersionRuntime.109.0.1518.78.${{ matrix.arch }}.cab
-          Expand .\Microsoft.WebView2.FixedVersionRuntime.109.0.1518.78.${{ matrix.arch }}.cab -F:* ./src-tauri
-          Remove-Item .\src-tauri\tauri.windows.conf.json
-          Rename-Item .\src-tauri\webview2.${{ matrix.arch }}.json tauri.windows.conf.json
-
-      - name: Tauri build
         id: build
         uses: tauri-apps/tauri-action@v0
         env:
@@ -147,45 +79,81 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          # Apple 签名配置已注释 - 避免签名错误，构建未签名版本
+          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
+          tagName: ${{ github.event.inputs.release_version || github.ref_name }}
+          releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}"
+          releaseBody: |
+            ## 🚀 Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}
+            
+            ### 📦 下载说明
+            - **Windows x64**: 下载 `*-x86_64-pc-windows-msvc-setup.exe`
+            - **Windows ARM64**: 下载 `*-aarch64-pc-windows-msvc-setup.exe`
+            - **macOS Apple Silicon**: 下载 `*-aarch64-apple-darwin.dmg`
+            - **macOS Intel**: 下载 `*-x86_64-apple-darwin.dmg`
+            
+            ### ⚠️ macOS 用户注意
+            由于应用未经 Apple 代码签名，首次运行时需要：
+            1. 右键点击应用，选择"打开"
+            2. 在弹出的对话框中点击"打开"
+            3. 或在"系统偏好设置" > "安全性与隐私"中允许运行
+            
+            这是一次性操作，之后可以正常双击启动。
+            
+            ### 🔄 更新内容
+            - 基于 Tauri 2 构建的现代化代理客户端
+            - 支持多种代理协议和规则配置
+            - 优化的用户界面和性能改进
+            - 完整的 Clerk 身份验证集成
+            
+            ### 💡 使用说明
+            1. 下载对应平台的安装包
+            2. 运行安装程序
+            3. 首次启动需要登录账户
+            4. 配置代理设置并开始使用
+            
+            ### 🛠️ 技术栈
+            - **前端**: React + TypeScript + Material-UI
+            - **后端**: Rust + Tauri 2
+            - **认证**: Clerk
+            - **构建**: Vite + pnpm
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
+          includeUpdaterJson: true
 
-      - name: Rename
+      # 列出构建产物（用于调试）
+      - name: List build artifacts
         run: |
-          $files = Get-ChildItem ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\*-setup.exe"
-          foreach ($file in $files) {
-            $newName = $file.Name -replace "-setup\.exe$", "_fixed_webview2-setup.exe"
-            Rename-Item $file.FullName $newName
-          }
+          echo "=== Build artifacts ==="
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            find src-tauri/target/${{ matrix.target }}/release/bundle -type f -name "*.exe" -o -name "*.msi" -o -name "*.nsis.zip" | head -10
+          else
+            find src-tauri/target/${{ matrix.target }}/release/bundle -type f -name "*.dmg" -o -name "*.app" | head -10
+          fi
+        shell: bash
 
-          $files = Get-ChildItem ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\*.nsis.zip"
-          foreach ($file in $files) {
-            $newName = $file.Name -replace "-setup\.nsis\.zip$", "_fixed_webview2-setup.nsis.zip"
-            Rename-Item $file.FullName $newName
-          }
-
-          $files = Get-ChildItem ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\*-setup.exe.sig"
-          foreach ($file in $files) {
-            $newName = $file.Name -replace "-setup\.exe\.sig$", "_fixed_webview2-setup.exe.sig"
-            Rename-Item $file.FullName $newName
-          }
-
-      - name: Upload Release
-        uses: softprops/action-gh-release@v2
+      # 额外的文件上传（如果需要上传到其他地方或者作为 artifacts）
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.event.inputs.release_version || github.ref_name }}
-          name: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}"
-          body: "More new features are now supported."
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
+          name: yi0yi-proxy-${{ matrix.target }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.nsis.zip
+          retention-days: 30
+          if-no-files-found: warn
 
-      - name: Portable Bundle
-        run: pnpm portable-fixed-webview2 ${{ matrix.target }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release-update:
+  # 生成更新器文件
+  release-updater:
     runs-on: ubuntu-latest
     needs: [release]
     steps:
@@ -207,30 +175,5 @@ jobs:
 
       - name: Release updater file
         run: pnpm updater
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release-update-for-fixed-webview2:
-    runs-on: ubuntu-latest
-    needs: [release-for-fixed-webview2]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          run_install: false
-
-      - name: Pnpm install
-        run: pnpm i
-
-      - name: Release updater file
-        run: pnpm updater-fixed-webview2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
