@@ -29,10 +29,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
           - os: macos-latest
             target: aarch64-apple-darwin
           - os: macos-latest
@@ -71,6 +67,29 @@ jobs:
           pnpm i
           pnpm check ${{ matrix.target }}
 
+      # macOS DMG 创建工具安装和配置
+      - name: Install macOS DMG tools
+        run: |
+          # 安装 create-dmg 工具
+          brew install create-dmg
+          
+          # 确保系统工具可用
+          which hdiutil
+          which codesign || echo "codesign not available (expected for unsigned builds)"
+          
+          # 设置权限和环境
+          sudo xattr -r -d com.apple.quarantine /usr/local/bin/* || true
+          
+          # 创建临时签名环境（用于无签名构建）
+          security create-keychain -p temp build.keychain || true
+          security default-keychain -s build.keychain || true
+          security unlock-keychain -p temp build.keychain || true
+          
+          # 设置环境变量以跳过签名
+          echo "MACOS_CERTIFICATE=" >> $GITHUB_ENV
+          echo "MACOS_CERTIFICATE_PWD=" >> $GITHUB_ENV
+          echo "CI=true" >> $GITHUB_ENV
+
       - name: Tauri build
         id: build
         uses: tauri-apps/tauri-action@v0
@@ -79,6 +98,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          
+          # macOS DMG 创建环境变量
+          CI: true
+          MACOS_CERTIFICATE: ""
+          MACOS_CERTIFICATE_PWD: ""
+          
           # Apple 签名配置已注释 - 避免签名错误，构建未签名版本
           # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -88,13 +113,11 @@ jobs:
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.event.inputs.release_version || github.ref_name }}
-          releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}"
+          releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }} (macOS Test)"
           releaseBody: |
-            ## 🚀 Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}
+            ## 🚀 Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }} (macOS 测试版本)
             
             ### 📦 下载说明
-            - **Windows x64**: 下载 `*-x86_64-pc-windows-msvc-setup.exe`
-            - **Windows ARM64**: 下载 `*-aarch64-pc-windows-msvc-setup.exe`
             - **macOS Apple Silicon**: 下载 `*-aarch64-apple-darwin.dmg`
             - **macOS Intel**: 下载 `*-x86_64-apple-darwin.dmg`
             
@@ -112,12 +135,6 @@ jobs:
             - 优化的用户界面和性能改进
             - 完整的 Clerk 身份验证集成
             
-            ### 💡 使用说明
-            1. 下载对应平台的安装包
-            2. 运行安装程序
-            3. 首次启动需要登录账户
-            4. 配置代理设置并开始使用
-            
             ### 🛠️ 技术栈
             - **前端**: React + TypeScript + Material-UI
             - **后端**: Rust + Tauri 2
@@ -127,28 +144,42 @@ jobs:
           args: --target ${{ matrix.target }}
           includeUpdaterJson: true
 
+      # 调试 macOS 构建问题
+      - name: Debug macOS build (if failed)
+        if: failure()
+        run: |
+          echo "=== DMG Build Debug Information ==="
+          echo "Checking bundle directory:"
+          ls -la src-tauri/target/${{ matrix.target }}/release/bundle/ || true
+          
+          echo "Checking DMG directory:"
+          ls -la src-tauri/target/${{ matrix.target }}/release/bundle/dmg/ || true
+          
+          echo "Checking for bundle_dmg.sh:"
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name "bundle_dmg.sh" -exec ls -la {} \; || true
+          
+          echo "System tools check:"
+          which create-dmg || echo "create-dmg not found"
+          which hdiutil || echo "hdiutil not found"
+          
+          echo "Bundle script content (if exists):"
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name "bundle_dmg.sh" -exec cat {} \; || true
+
       # 列出构建产物（用于调试）
       - name: List build artifacts
+        if: success()
         run: |
-          echo "=== Build artifacts ==="
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            find src-tauri/target/${{ matrix.target }}/release/bundle -type f -name "*.exe" -o -name "*.msi" -o -name "*.nsis.zip" | head -10
-          else
-            find src-tauri/target/${{ matrix.target }}/release/bundle -type f -name "*.dmg" -o -name "*.app" | head -10
-          fi
-        shell: bash
+          echo "=== macOS Build artifacts ==="
+          find src-tauri/target/${{ matrix.target }}/release/bundle -type f -name "*.dmg" -o -name "*.app" | head -10
 
-      # 额外的文件上传（如果需要上传到其他地方或者作为 artifacts）
+      # 上传构建产物
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: yi0yi-proxy-${{ matrix.target }}
+          name: yi0yi-proxy-macos-${{ matrix.target }}
           path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.nsis.zip
           retention-days: 30
           if-no-files-found: warn
 
