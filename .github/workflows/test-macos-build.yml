@@ -1,0 +1,97 @@
+name: Test macOS Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target architecture'
+        required: true
+        type: choice
+        options:
+          - 'x86_64-apple-darwin'
+          - 'aarch64-apple-darwin'
+        default: 'aarch64-apple-darwin'
+
+permissions: write-all
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+
+jobs:
+  test-macos:
+    name: Test macOS Build
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ github.event.inputs.target }}
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm run web:build
+
+      - name: Install macOS dependencies
+        run: |
+          # 安装必要的macOS工具
+          brew install create-dmg
+          
+          # 检查系统工具
+          which hdiutil
+          which codesign
+          
+          # 创建临时签名身份（用于无签名构建）
+          security create-keychain -p test build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p test build.keychain
+
+      - name: Build Tauri App
+        run: |
+          # 设置环境变量以跳过代码签名
+          export MACOS_CERTIFICATE=""
+          export MACOS_CERTIFICATE_PWD=""
+          export CI=true
+          
+          # 构建应用
+          pnpm tauri build --target ${{ github.event.inputs.target }} --verbose
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+
+      - name: List build artifacts
+        run: |
+          echo "=== Build artifacts ==="
+          find src-tauri/target/${{ github.event.inputs.target }}/release/bundle -type f -name "*.dmg" -o -name "*.app" | head -10
+          
+          echo "=== Bundle directory structure ==="
+          ls -la src-tauri/target/${{ github.event.inputs.target }}/release/bundle/ || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build-${{ github.event.inputs.target }}
+          path: |
+            src-tauri/target/${{ github.event.inputs.target }}/release/bundle/**/*.dmg
+            src-tauri/target/${{ github.event.inputs.target }}/release/bundle/**/*.app
+          retention-days: 7 

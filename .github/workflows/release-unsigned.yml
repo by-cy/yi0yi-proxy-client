@@ -76,17 +76,29 @@ jobs:
       - name: Check target compatibility
         run: pnpm check ${{ matrix.target }}
 
+      # macOS特殊处理：安装DMG创建所需的工具
+      - name: Install macOS DMG tools
+        if: matrix.os == 'macos-latest'
+        run: |
+          # 确保有必要的工具
+          brew install create-dmg || true
+          # 设置权限
+          sudo xattr -r -d com.apple.quarantine /usr/local/bin/* || true
+
       - name: Build Yi0Yi Proxy (Unsigned)
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
+          # macOS DMG创建环境变量
+          CI: true
+          MACOS_CERTIFICATE: ""
+          MACOS_CERTIFICATE_PWD: ""
+          
           # 只使用Tauri签名密钥（如果有的话，没有也可以跳过）
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          
-          # 不使用Apple签名 - 留空即可
         
         with:
           tagName: ${{ github.event.inputs.release_version || github.ref_name }}
