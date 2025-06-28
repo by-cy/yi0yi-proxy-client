@@ -1,0 +1,130 @@
+name: Release Unsigned Apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (e.g., v2.2.4)'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*-unsigned'
+
+permissions: write-all
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+
+jobs:
+  release-unsigned:
+    name: Release ${{ matrix.platform }} (Unsigned)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows 构建（无需签名也能正常使用）
+          - platform: 'windows-x64'
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            
+          - platform: 'windows-arm64'
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+          
+          # macOS 构建（无签名）
+          - platform: 'macos-apple-silicon'
+            os: macos-latest
+            target: aarch64-apple-darwin
+            
+          - platform: 'macos-intel'
+            os: macos-latest
+            target: x86_64-apple-darwin
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          cache-all-crates: true
+          cache-on-failure: true
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check target compatibility
+        run: pnpm check ${{ matrix.target }}
+
+      - name: Build Yi0Yi Proxy (Unsigned)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+          # 只使用Tauri签名密钥（如果有的话，没有也可以跳过）
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          
+          # 不使用Apple签名 - 留空即可
+        
+        with:
+          tagName: ${{ github.event.inputs.release_version || github.ref_name }}
+          releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }} (Unsigned)"
+          releaseBody: |
+            ## 🚀 Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }} (无签名版本)
+            
+            ### 📦 下载说明
+            - **Windows x64**: 下载 `*-x86_64-pc-windows-msvc-setup.exe`
+            - **Windows ARM64**: 下载 `*-aarch64-pc-windows-msvc-setup.exe`
+            - **macOS Apple Silicon**: 下载 `*-aarch64-apple-darwin.dmg`
+            - **macOS Intel**: 下载 `*-x86_64-apple-darwin.dmg`
+            
+            ### ⚠️ macOS用户特别注意
+            由于此版本未经Apple代码签名，首次运行时：
+            1. **如果提示"无法打开"**：
+               - 右键点击应用，选择"打开"
+               - 在弹出的对话框中点击"打开"
+            
+            2. **或者在系统偏好设置中允许**：
+               - 打开"系统偏好设置" > "安全性与隐私"
+               - 在"通用"选项卡中找到被阻止的应用
+               - 点击"仍要打开"
+            
+            3. **对于较新的macOS版本，可能需要**：
+               ```bash
+               # 临时禁用Gatekeeper（安装后建议重新启用）
+               sudo spctl --master-disable
+               # 安装完成后重新启用
+               sudo spctl --master-enable
+               ```
+            
+            ### 🔄 更新内容
+            请查看完整的更新日志了解新功能和改进。
+            
+            ### 💡 如需签名版本
+            如果您需要无需额外步骤即可运行的macOS版本，请联系开发者获取签名版本。
+          
+          tauriScript: pnpm
+          args: --target ${{ matrix.target }}
+          includeUpdaterJson: false  # 无签名版本不建议自动更新 
