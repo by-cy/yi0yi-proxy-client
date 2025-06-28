@@ -52,6 +52,8 @@ jobs:
 
       - name: Build frontend
         run: pnpm run web:build
+        env:
+          NODE_OPTIONS: "--max_old_space_size=8192"
 
       - name: Install macOS dependencies
         run: |
@@ -77,7 +79,7 @@ jobs:
           # 构建应用
           pnpm tauri build --target ${{ github.event.inputs.target }} --verbose
         env:
-          NODE_OPTIONS: "--max_old_space_size=4096"
+          NODE_OPTIONS: "--max_old_space_size=8192"
 
       - name: List build artifacts
         run: |

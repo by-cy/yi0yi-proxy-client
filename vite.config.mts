@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { defineConfig } from "vite";
 import monacoEditorPlugin, {
-  type IMonacoEditorOpts,
+    type IMonacoEditorOpts,
 } from "vite-plugin-monaco-editor";
 import svgr from "vite-plugin-svgr";
 const monacoEditorPluginDefault = (monacoEditorPlugin as any).default as (
@@ -68,12 +68,21 @@ export default defineConfig({
     sourcemap: false,
     cssCodeSplit: true,
     cssMinify: true,
+    // 减少内存使用
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
     rollupOptions: {
       treeshake: {
         preset: "recommended",
         moduleSideEffects: (id) => !/\.css$/.test(id),
         tryCatchDeoptimization: false,
       },
+      // 优化内存使用
+      maxParallelFileOps: 2,
       output: {
         compact: true,
         experimentalMinChunkSize: 30000,

@@ -91,7 +91,7 @@ jobs:
       - name: Test Build Yi0Yi Proxy
         uses: tauri-apps/tauri-action@v0
         env:
-          NODE_OPTIONS: "--max_old_space_size=4096"
+          NODE_OPTIONS: "--max_old_space_size=8192"
           
           # 如果有签名密钥则使用，否则跳过签名
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}

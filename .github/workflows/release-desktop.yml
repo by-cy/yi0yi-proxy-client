@@ -96,7 +96,7 @@ jobs:
       - name: Build Yi0Yi Proxy
         uses: tauri-apps/tauri-action@v0
         env:
-          NODE_OPTIONS: "--max_old_space_size=4096"
+          NODE_OPTIONS: "--max_old_space_size=8192"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
           # Tauri签名密钥（必需）
