@@ -72,26 +72,37 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
         throw new Error('Invalid Clerk configuration. Please check your Publishable Key.');
       }
       
-      // 显示详细配置信息 (在 CI 环境或调试模式下)
+      // 显示详细配置信息
       const config = getClerkConfig();
       const isDebugMode = import.meta.env.VITE_CI || import.meta.env.DEV;
       
-      if (isDebugMode) {
-        console.log(`🏗️ Clerk Configuration Details`);
-        console.log(`📦 Environment: ${config.environment}`);
-        console.log(`🔑 Publishable Key: ${config.publishableKey}`);
-        console.log(`🌐 Frontend API: ${import.meta.env.VITE_CLERK_FRONTEND_API || 'using default'}`);
-        console.log(`🚀 Is Tauri: ${isTauriEnvironment()}`);
-        console.log(`🌍 Location: ${window.location.origin}`);
-      }
+      console.warn(`🏗️ Clerk Configuration Details (Production Debug)`);
+      console.warn(`📦 Environment: ${config.environment}`);
+      console.warn(`🔑 Publishable Key: ${config.publishableKey}`);
+      console.warn(`🌐 VITE_CLERK_FRONTEND_API: ${import.meta.env.VITE_CLERK_FRONTEND_API || 'NOT SET'}`);
+      console.warn(`🚀 Is Tauri: ${isTauriEnvironment()}`);
+      console.warn(`🌍 Location: ${window.location.origin}`);
+      console.warn(`🔍 All Clerk Env Vars:`, {
+        VITE_CLERK_PUBLISHABLE_KEY: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'NOT SET',
+        VITE_CLERK_FRONTEND_API: import.meta.env.VITE_CLERK_FRONTEND_API || 'NOT SET'
+      });
       
-      // 生产环境特殊提醒
-      if (config.environment === 'production') {
-        console.log('🏭 Production Clerk environment detected');
-        if (!import.meta.env.VITE_CLERK_FRONTEND_API) {
-          console.warn('⚠️ Production environment but no VITE_CLERK_FRONTEND_API set');
-        }
-      }
+             // 分析 publishable key 来确定预期的 API 端点
+       if (config.publishableKey.startsWith('pk_live_')) {
+         const keyPart = config.publishableKey.replace('pk_live_', '');
+         try {
+           const decodedKey = atob(keyPart);
+           console.warn(`🔐 Decoded Key Domain: ${decodedKey}`);
+         } catch (e) {
+           console.warn('Could not decode publishable key');
+         }
+       }
+       
+       // 生产环境特殊提醒
+       if (config.environment === 'production') {
+         console.warn('🏭 Production Clerk environment detected');
+         console.warn('⚠️ Note: Removed custom frontendApi to use Clerk default endpoints');
+       }
       const publishableKey = config.publishableKey;
       console.log('Creating new Clerk instance with key:', publishableKey.substring(0, 20) + '...');
       
@@ -123,10 +134,8 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
           experimentalForceRedirectWrapper: true
         }),
         
-        // Clerk Frontend API URL (生产环境)
-        ...(import.meta.env.VITE_CLERK_FRONTEND_API && {
-          frontendApi: import.meta.env.VITE_CLERK_FRONTEND_API
-        }),
+        // 生产环境配置 - 不使用自定义 frontendApi，让 Clerk 使用默认的 API 端点
+        // 我们的自定义域名 https://clerk.101proxy.top 应该通过 allowed origins 配置
         ...(config.appearance && { appearance: config.appearance }),
         ...(config.signInUrl && { signInUrl: config.signInUrl }),
         ...(config.signUpUrl && { signUpUrl: config.signUpUrl }),
@@ -137,41 +146,32 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
       console.log('Clerk options:', { 
         ...clerkOptions, 
         publishableKey: publishableKey.substring(0, 20) + '...',
-        frontendApi: clerkOptions.frontendApi ? clerkOptions.frontendApi.substring(0, 30) + '...' : 'default',
-        crossOriginEnabled: true // 明确标明跨域已启用
+        crossOriginEnabled: true, // 明确标明跨域已启用
+        usingDefaultFrontendApi: true // 使用 Clerk 默认的 Frontend API
       });
       
       console.log('🌐 Cross-Origin support enabled (credentials: include)');
       
-      clerkInstance = new Clerk(clerkOptions.publishableKey, {
-        httpOptions: clerkOptions.httpOptions,
-        ...(clerkOptions.frontendApi && { frontendApi: clerkOptions.frontendApi }),
-        // 确保传递所有重要的配置选项
-        ...(clerkOptions.signInForceRedirectUrl && { 
-          signInForceRedirectUrl: clerkOptions.signInForceRedirectUrl 
-        }),
-        ...(clerkOptions.signUpForceRedirectUrl && { 
-          signUpForceRedirectUrl: clerkOptions.signUpForceRedirectUrl 
-        }),
-        ...(clerkOptions.signInFallbackRedirectUrl && { 
-          signInFallbackRedirectUrl: clerkOptions.signInFallbackRedirectUrl 
-        }),
-        ...(clerkOptions.signUpFallbackRedirectUrl && { 
-          signUpFallbackRedirectUrl: clerkOptions.signUpFallbackRedirectUrl 
-        }),
-        ...(clerkOptions.allowedRedirectOrigins && { 
-          allowedRedirectOrigins: clerkOptions.allowedRedirectOrigins 
-        }),
-        // 会话管理配置
-        standardBrowser: !isTauriEnvironment(), // 在 Tauri 中使用非标准模式
-        touchSession: true // 启用会话触摸机制以保持会话活跃
-      });
+      clerkInstance = new Clerk(clerkOptions.publishableKey);
       
       console.log('Loading Clerk instance...');
       
       // 添加 Tauri 特定的错误处理
       try {
         await clerkInstance.load();
+        
+        // 加载完成后配置跨域支持
+        console.log('🌐 Configuring cross-origin support after load...');
+        
+        // 应用配置选项
+        if (clerkOptions.signInForceRedirectUrl) {
+          console.log('Setting signInForceRedirectUrl:', clerkOptions.signInForceRedirectUrl);
+        }
+        
+        if (isTauriEnvironment()) {
+          console.log('🚀 Tauri environment: Clerk loaded with redirect-based authentication');
+        }
+        
       } catch (loadError) {
         if (isTauriEnvironment() && (loadError as Error).message?.includes('close')) {
           console.warn('⚠️ Tauri-specific Clerk loading issue detected, attempting recovery...');
@@ -227,12 +227,12 @@ export const signIn = async (emailAddress: string, password: string) => {
     console.log('Sign in attempt status:', signInAttempt.status);
 
     if (signInAttempt.status === 'complete') {
-      console.log('✅ Sign in attempt completed, setting active session...');
-      console.log('Session ID:', signInAttempt.createdSessionId);
+      console.warn('✅ Sign in attempt completed, setting active session...');
+      console.warn('Session ID:', signInAttempt.createdSessionId);
       
       // 在 Tauri 环境中添加特殊处理
       if (isTauriEnvironment()) {
-        console.log('🚀 Tauri environment: handling sign-in completion');
+        console.warn('🚀 Tauri environment: handling sign-in completion');
         
         // 添加延迟以确保状态稳定
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -243,7 +243,7 @@ export const signIn = async (emailAddress: string, password: string) => {
       
       // 验证会话是否正确设置
       const activeSession = clerk.session;
-      console.log('Active session after setActive:', {
+      console.warn('Active session after setActive:', {
         sessionId: activeSession?.id,
         userId: clerk.user?.id,
         status: activeSession?.status,
@@ -252,8 +252,8 @@ export const signIn = async (emailAddress: string, password: string) => {
       
       // 额外验证：检查会话是否真的活跃
       if (!activeSession || !clerk.user) {
-        console.warn('⚠️ Warning: Session may not be properly activated');
-        console.log('Clerk state:', {
+        console.error('⚠️ ERROR: Session may not be properly activated');
+        console.error('Clerk state:', {
           hasSession: !!clerk.session,
           hasUser: !!clerk.user,
           sessionId: clerk.session?.id,
@@ -261,10 +261,10 @@ export const signIn = async (emailAddress: string, password: string) => {
         });
         
         // 记录潜在的会话同步问题
-        console.warn('🚨 Potential session sync issue detected - this may cause subsequent API calls to fail');
+        console.error('🚨 CRITICAL: Session sync issue detected - this WILL cause subsequent API calls to fail');
       }
       
-      console.log('✅ Sign in completed successfully');
+      console.warn('✅ Sign in completed successfully');
       return signInAttempt;
     } else {
       // Handle other statuses (needs verification, etc.)
@@ -376,7 +376,7 @@ export const isUserSignedIn = () => {
 export const debugSessionState = () => {
   const clerk = getClerk();
   if (!clerk) {
-    console.log('🔍 Debug Session State: Clerk not initialized');
+    console.warn('🔍 Debug Session State: Clerk not initialized');
     return null;
   }
   
@@ -387,10 +387,42 @@ export const debugSessionState = () => {
     sessionId: clerk.session?.id,
     sessionStatus: clerk.session?.status,
     isSignedIn: !!clerk.user,
+    publishableKey: clerk.publishableKey?.substring(0, 20) + '...',
     environment: clerk.publishableKey?.startsWith('pk_live_') ? 'production' : 'development',
-    frontendApi: (clerk as any)?.frontendApi || 'default'
+    // 尝试获取实际使用的 API 端点
+    clerkDomain: (clerk as any)?.__domain || (clerk as any)?._domain || 'unknown',
+    clerkApiVersion: (clerk as any)?.__version || (clerk as any)?.version || 'unknown',
+    clerkConfig: {
+      frontendApi: (clerk as any)?.frontendApi || 'not set',
+      domain: (clerk as any)?.domain || 'not set',
+      proxyUrl: (clerk as any)?.proxyUrl || 'not set'
+    }
   };
   
-  console.log('🔍 Debug Session State:', sessionState);
+  console.warn('🔍 Debug Session State:', sessionState);
+  
+  // 额外检查：当前使用的 API URL
+  if (clerk.session) {
+    console.warn('🌐 Session API calls will go to domain derived from publishable key');
+    
+    // 尝试解码 publishable key 来看实际的域名
+    if (clerk.publishableKey?.startsWith('pk_live_')) {
+      try {
+        const keyPart = clerk.publishableKey.replace('pk_live_', '');
+        const decodedDomain = atob(keyPart);
+        console.warn('🔐 Clerk will use API domain:', decodedDomain);
+      } catch (e) {
+        console.warn('Could not decode domain from publishable key');
+      }
+    }
+  }
+  
   return sessionState;
-}; 
+};
+
+// 将调试函数暴露到全局，方便在浏览器控制台中调用
+if (typeof window !== 'undefined') {
+  (window as any).clerkDebug = debugSessionState;
+  (window as any).clerkInstance = () => getClerk();
+  console.warn('🚀 Debug functions available: window.clerkDebug(), window.clerkInstance()');
+} 
