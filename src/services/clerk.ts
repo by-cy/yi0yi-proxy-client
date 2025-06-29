@@ -93,13 +93,26 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
       // Initialize Clerk with configuration (包括 Tauri 特定配置和跨域支持)
       const clerkOptions = {
         publishableKey,
-        // 跨域支持配置
+                // 跨域支持配置
         httpOptions: {
           credentials: 'include', // 等同于 crossOrigin="include"
           headers: {
             'Access-Control-Allow-Credentials': 'true',
           }
         },
+        
+        // 在 Tauri 环境中使用 redirect 模式避免 popup 问题
+        ...(isTauriEnvironment() && {
+          signInForceRedirectUrl: window.location.origin + '/login',
+          signUpForceRedirectUrl: window.location.origin + '/login', 
+          signInFallbackRedirectUrl: window.location.origin + '/',
+          signUpFallbackRedirectUrl: window.location.origin + '/',
+          // 禁用弹出窗口模式，强制使用重定向
+          allowedRedirectOrigins: [window.location.origin],
+          // 确保在 Tauri 中不使用弹窗
+          experimentalForceRedirectWrapper: true
+        }),
+        
         // Clerk Frontend API URL (生产环境)
         ...(import.meta.env.VITE_CLERK_FRONTEND_API && {
           frontendApi: import.meta.env.VITE_CLERK_FRONTEND_API
