@@ -176,84 +176,13 @@ if (isTauriEnvironment()) {
     }
   };
   
-  // 添加 addEventListener 拦截来捕获更多错误事件
-  const originalAddEventListener = window.addEventListener;
-  window.addEventListener = function(type, listener, options) {
-    if (type === 'error') {
-      const wrappedListener = function(event) {
-        const errorMsg = event.error?.message || event.message || String(event.error || '');
-        const closeErrorPatterns = [
-          'close is not a function',
-          'this.close is not a function',
-          '.close is not a function'
-        ];
-        
-        const isCloseError = closeErrorPatterns.some(pattern => 
-          errorMsg.toLowerCase().includes(pattern.toLowerCase())
-        );
-        
-        if (isCloseError) {
-          console.log('🔄 Tauri Polyfill: Intercepted close error via addEventListener:', errorMsg);
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
-        
-        if (typeof listener === 'function') {
-          return listener.call(this, event);
-        }
-      };
-      
-      return originalAddEventListener.call(this, type, wrappedListener, options);
-    }
-    
-    return originalAddEventListener.call(this, type, listener, options);
-  };
-  
-  // 添加终极保护：确保全局 close 方法存在
+  // 安全的 close 方法确保 - 只在确实缺失时添加
   if (typeof window.close !== 'function') {
     window.close = function(returnValue) {
       console.log('🔄 Tauri Polyfill: Global fallback close() called');
       return;
     };
   }
-  
-  // 创建一个通用的 close 方法，可以附加到任何对象
-  const universalClose = function() {
-    console.log('🔄 Tauri Polyfill: Universal close() called on', this);
-    return;
-  };
-  
-  // 定期检查并修复可能缺失的 close 方法
-  const closeMethodChecker = setInterval(() => {
-    try {
-      // 检查 window 对象
-      if (typeof window.close !== 'function') {
-        window.close = universalClose;
-        console.log('🔄 Tauri Polyfill: Restored window.close method');
-      }
-      
-      // 检查 document 对象（有时 Clerk 可能在这里调用 close）
-      if (typeof document.close !== 'function') {
-        document.close = universalClose;
-      }
-      
-      // 检查全局对象上是否有其他可能的 close 调用
-      if (typeof globalThis.close !== 'function') {
-        globalThis.close = universalClose;
-      }
-      
-    } catch (error) {
-      // 静默处理检查过程中的任何错误
-      console.warn('🔄 Tauri Polyfill: Error in close method checker:', error);
-    }
-  }, 100);
-  
-  // 5秒后停止检查器，避免无限运行
-  setTimeout(() => {
-    clearInterval(closeMethodChecker);
-    console.log('🔄 Tauri Polyfill: Close method checker stopped');
-  }, 5000);
   
   console.log('✅ Tauri Clerk polyfills applied successfully with enhanced protection');
 }
