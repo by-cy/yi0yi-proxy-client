@@ -114,8 +114,11 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
       console.log('Clerk options:', { 
         ...clerkOptions, 
         publishableKey: publishableKey.substring(0, 20) + '...',
-        frontendApi: clerkOptions.frontendApi ? clerkOptions.frontendApi.substring(0, 30) + '...' : 'default'
+        frontendApi: clerkOptions.frontendApi ? clerkOptions.frontendApi.substring(0, 30) + '...' : 'default',
+        crossOriginEnabled: true // 明确标明跨域已启用
       });
+      
+      console.log('🌐 Cross-Origin support enabled (credentials: include)');
       
       clerkInstance = new Clerk(clerkOptions.publishableKey, {
         httpOptions: clerkOptions.httpOptions,
