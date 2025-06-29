@@ -110,6 +110,38 @@ if (isTauriEnvironment()) {
     }
   };
   
+  // 添加全局错误处理器来捕获 Clerk 的 close 错误
+  const originalErrorHandler = window.onerror;
+  window.onerror = function (message, source, lineno, colno, error) {
+    // 检查是否是 Clerk 的 close 方法错误
+    if (typeof message === 'string' && message.includes('close is not a function')) {
+      console.log('🔄 Tauri Polyfill: Caught and handled Clerk close error');
+      return true; // 阻止错误传播
+    }
+    
+    // 调用原始错误处理器
+    if (originalErrorHandler) {
+      return originalErrorHandler.call(this, message, source, lineno, colno, error);
+    }
+    
+    return false;
+  };
+  
+  // 处理未捕获的异常
+  const originalUnhandledRejection = window.onunhandledrejection;
+  window.onunhandledrejection = function (event) {
+    if (event.reason && typeof event.reason.message === 'string' && 
+        event.reason.message.includes('close is not a function')) {
+      console.log('🔄 Tauri Polyfill: Caught and handled Clerk close promise rejection');
+      event.preventDefault();
+      return;
+    }
+    
+    if (originalUnhandledRejection) {
+      return originalUnhandledRejection.call(this, event);
+    }
+  };
+  
   console.log('✅ Tauri Clerk polyfills applied successfully');
 }
 
