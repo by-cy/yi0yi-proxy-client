@@ -64,7 +64,6 @@ export const LayoutTraffic = () => {
         },
         onerror(event) {
           console.error("[Traffic] WebSocket 连接错误", event);
-          s.close();
           next(null, { up: 0, down: 0 });
         },
         onclose(event) {
@@ -119,7 +118,6 @@ export const LayoutTraffic = () => {
         },
         onerror(event) {
           console.error("[Memory] WebSocket 连接错误", event);
-          s.close();
           next(null, { inuse: 0 });
         },
         onclose(event) {
