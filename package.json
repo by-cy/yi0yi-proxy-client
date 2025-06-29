@@ -1,6 +1,6 @@
 {
   "name": "yi0yi-proxy",
-  "version": "2.2.4-alpha.0",
+  "version": "2.2.4-0",
   "license": "GPL-3.0-only",
   "scripts": {
     "dev": "cross-env RUST_BACKTRACE=1 tauri dev -f verge-dev -- --profile fast-dev",
