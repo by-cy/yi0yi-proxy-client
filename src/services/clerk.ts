@@ -72,16 +72,26 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
         throw new Error('Invalid Clerk configuration. Please check your Publishable Key.');
       }
       
-      // 在 CI 环境中显示详细配置信息
-      if (import.meta.env.VITE_CI) {
-        const config = getClerkConfig();
-        console.log(`🏗️ CI Build Environment Detected`);
+      // 显示详细配置信息 (在 CI 环境或调试模式下)
+      const config = getClerkConfig();
+      const isDebugMode = import.meta.env.VITE_CI || import.meta.env.DEV;
+      
+      if (isDebugMode) {
+        console.log(`🏗️ Clerk Configuration Details`);
         console.log(`📦 Environment: ${config.environment}`);
         console.log(`🔑 Publishable Key: ${config.publishableKey}`);
-        console.log(`🌐 Frontend API: ${import.meta.env.VITE_CLERK_FRONTEND_API || 'default'}`);
+        console.log(`🌐 Frontend API: ${import.meta.env.VITE_CLERK_FRONTEND_API || 'using default'}`);
+        console.log(`🚀 Is Tauri: ${isTauriEnvironment()}`);
+        console.log(`🌍 Location: ${window.location.origin}`);
       }
       
-      const config = getClerkConfig();
+      // 生产环境特殊提醒
+      if (config.environment === 'production') {
+        console.log('🏭 Production Clerk environment detected');
+        if (!import.meta.env.VITE_CLERK_FRONTEND_API) {
+          console.warn('⚠️ Production environment but no VITE_CLERK_FRONTEND_API set');
+        }
+      }
       const publishableKey = config.publishableKey;
       console.log('Creating new Clerk instance with key:', publishableKey.substring(0, 20) + '...');
       
@@ -135,7 +145,26 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
       
       clerkInstance = new Clerk(clerkOptions.publishableKey, {
         httpOptions: clerkOptions.httpOptions,
-        ...(clerkOptions.frontendApi && { frontendApi: clerkOptions.frontendApi })
+        ...(clerkOptions.frontendApi && { frontendApi: clerkOptions.frontendApi }),
+        // 确保传递所有重要的配置选项
+        ...(clerkOptions.signInForceRedirectUrl && { 
+          signInForceRedirectUrl: clerkOptions.signInForceRedirectUrl 
+        }),
+        ...(clerkOptions.signUpForceRedirectUrl && { 
+          signUpForceRedirectUrl: clerkOptions.signUpForceRedirectUrl 
+        }),
+        ...(clerkOptions.signInFallbackRedirectUrl && { 
+          signInFallbackRedirectUrl: clerkOptions.signInFallbackRedirectUrl 
+        }),
+        ...(clerkOptions.signUpFallbackRedirectUrl && { 
+          signUpFallbackRedirectUrl: clerkOptions.signUpFallbackRedirectUrl 
+        }),
+        ...(clerkOptions.allowedRedirectOrigins && { 
+          allowedRedirectOrigins: clerkOptions.allowedRedirectOrigins 
+        }),
+        // 会话管理配置
+        standardBrowser: !isTauriEnvironment(), // 在 Tauri 中使用非标准模式
+        touchSession: true // 启用会话触摸机制以保持会话活跃
       });
       
       console.log('Loading Clerk instance...');
@@ -198,6 +227,9 @@ export const signIn = async (emailAddress: string, password: string) => {
     console.log('Sign in attempt status:', signInAttempt.status);
 
     if (signInAttempt.status === 'complete') {
+      console.log('✅ Sign in attempt completed, setting active session...');
+      console.log('Session ID:', signInAttempt.createdSessionId);
+      
       // 在 Tauri 环境中添加特殊处理
       if (isTauriEnvironment()) {
         console.log('🚀 Tauri environment: handling sign-in completion');
@@ -206,8 +238,33 @@ export const signIn = async (emailAddress: string, password: string) => {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
       
+      // 设置活跃会话
       await clerk.setActive({ session: signInAttempt.createdSessionId });
-      console.log('Sign in completed successfully');
+      
+      // 验证会话是否正确设置
+      const activeSession = clerk.session;
+      console.log('Active session after setActive:', {
+        sessionId: activeSession?.id,
+        userId: clerk.user?.id,
+        status: activeSession?.status,
+        user: !!clerk.user
+      });
+      
+      // 额外验证：检查会话是否真的活跃
+      if (!activeSession || !clerk.user) {
+        console.warn('⚠️ Warning: Session may not be properly activated');
+        console.log('Clerk state:', {
+          hasSession: !!clerk.session,
+          hasUser: !!clerk.user,
+          sessionId: clerk.session?.id,
+          userId: clerk.user?.id
+        });
+        
+        // 记录潜在的会话同步问题
+        console.warn('🚨 Potential session sync issue detected - this may cause subsequent API calls to fail');
+      }
+      
+      console.log('✅ Sign in completed successfully');
       return signInAttempt;
     } else {
       // Handle other statuses (needs verification, etc.)
@@ -313,4 +370,27 @@ export const isUserSignedIn = () => {
   const signedIn = !!clerk?.user;
   console.log('User signed in:', signedIn);
   return signedIn;
+};
+
+// 调试函数：获取详细的会话状态
+export const debugSessionState = () => {
+  const clerk = getClerk();
+  if (!clerk) {
+    console.log('🔍 Debug Session State: Clerk not initialized');
+    return null;
+  }
+  
+  const sessionState = {
+    hasUser: !!clerk.user,
+    hasSession: !!clerk.session,
+    userId: clerk.user?.id,
+    sessionId: clerk.session?.id,
+    sessionStatus: clerk.session?.status,
+    isSignedIn: !!clerk.user,
+    environment: clerk.publishableKey?.startsWith('pk_live_') ? 'production' : 'development',
+    frontendApi: (clerk as any)?.frontendApi || 'default'
+  };
+  
+  console.log('🔍 Debug Session State:', sessionState);
+  return sessionState;
 }; 
