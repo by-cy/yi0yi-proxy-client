@@ -50,7 +50,7 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
       }
       
       // 在 CI 环境中显示详细配置信息
-      if (process.env.CI) {
+      if (import.meta.env.VITE_CI) {
         const config = getClerkConfig();
         console.log(`🏗️ CI Build Environment Detected`);
         console.log(`📦 Environment: ${config.environment}`);

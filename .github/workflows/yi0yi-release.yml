@@ -95,6 +95,7 @@ jobs:
           
           # Production Build Flag
           NODE_ENV: production
+          VITE_CI: true
           
           # macOS APP 构建环境变量
           CI: true
