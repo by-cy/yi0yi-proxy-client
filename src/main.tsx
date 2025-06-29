@@ -3,12 +3,8 @@
 
 // 首先加载 Tauri Clerk polyfill（必须在其他导入之前）
 import "./polyfills/tauri-clerk.js";
-import { setupTauriErrorHandler } from "./utils/tauri-error-handler";
 
 import "./assets/styles/index.scss";
-
-// 立即设置 Tauri 错误处理器
-setupTauriErrorHandler();
 
 import { ResizeObserver } from "@juggle/resize-observer";
 if (!window.ResizeObserver) {
