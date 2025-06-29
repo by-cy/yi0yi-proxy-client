@@ -58,6 +58,34 @@ VITE_CLERK_PUBLISHABLE_KEY_PROD=pk_live_your_production_key
 VITE_CLERK_FRONTEND_API_PROD=https://your-production-instance.clerk.accounts.dev
 ```
 
+## 🔑 Secret Key 配置 (用于 Tauri Origins)
+
+### 获取 Secret Key
+1. 登录 [Clerk Dashboard](https://dashboard.clerk.com)
+2. 选择应用 → Settings → API Keys
+3. 复制 **Secret Key** (不是 Publishable Key)
+
+### 开发环境
+```bash
+export CLERK_SECRET_KEY=sk_test_your_development_secret_key
+```
+
+### 生产环境
+```bash
+export CLERK_SECRET_KEY=sk_live_your_production_secret_key
+```
+
+### 配置 Tauri Origins
+```bash
+# 设置 Secret Key
+export CLERK_SECRET_KEY=sk_live_your_secret_key
+
+# 运行配置脚本
+pnpm configure-clerk
+```
+
+⚠️ **重要**: Secret Key 具有管理员权限，请妥善保管，不要提交到代码库！
+
 ## 创建步骤：
 # 1. 在项目根目录运行: touch .env .env.production
 # 2. 将对应内容复制到文件中

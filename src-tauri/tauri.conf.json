@@ -66,7 +66,7 @@
         ],
         "enable": true
       },
-      "csp": "default-src 'self' tauri: https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.accounts.dev https://*.clerk.accounts.dev https://supreme-javelin-47.clerk.accounts.dev; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; connect-src 'self' https: wss: https://clerk.accounts.dev https://*.clerk.accounts.dev https://supreme-javelin-47.clerk.accounts.dev; worker-src 'self' blob:; child-src 'self' blob:; font-src 'self' data: https:; media-src 'self' data: https: blob:;"
+      "csp": "default-src 'self' tauri: https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.101proxy.top https://*.clerk.accounts.dev https://supreme-javelin-47.clerk.accounts.dev; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; connect-src 'self' https: wss: https://clerk.101proxy.top https://*.clerk.accounts.dev https://supreme-javelin-47.clerk.accounts.dev; worker-src 'self' blob:; child-src 'self' blob:; font-src 'self' data: https:; media-src 'self' data: https: blob:;"
     }
   }
 }

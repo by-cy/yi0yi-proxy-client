@@ -1,13 +1,36 @@
 import { Clerk } from '@clerk/clerk-js';
 
+// 检测 Tauri 环境
+const isTauriEnvironment = () => {
+  return window?.location?.protocol === 'tauri:' || 
+         (window as any)?.__TAURI__ !== undefined ||
+         window?.navigator?.userAgent?.includes('Tauri');
+};
+
 // Clerk configuration - 根据环境使用不同密钥
 const getClerkConfig = () => {
   // 优先使用环境变量
   const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_c3VwcmVtZS1qYXZlbGluLTQ3LmNsZXJrLmFjY291bnRzLmRldiQ';
   
+  // Tauri 特定配置
+  const tauriConfig = isTauriEnvironment() ? {
+    // 在 Tauri 中禁用某些可能有问题的功能
+    appearance: {
+      elements: {
+        modalCloseButton: { display: 'none' }, // 隐藏可能调用 window.close 的按钮
+      }
+    },
+    // 配置适合 Tauri 的认证流程
+    signInUrl: window.location.origin + '/login',
+    signUpUrl: window.location.origin + '/login',
+    afterSignInUrl: window.location.origin + '/',
+    afterSignUpUrl: window.location.origin + '/',
+  } : {};
+  
   return {
     publishableKey,
-    environment: publishableKey.startsWith('pk_live_') ? 'production' : 'development'
+    environment: publishableKey.startsWith('pk_live_') ? 'production' : 'development',
+    ...tauriConfig
   };
 };
 
@@ -62,11 +85,58 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
       const publishableKey = config.publishableKey;
       console.log('Creating new Clerk instance with key:', publishableKey.substring(0, 20) + '...');
       
-      // Initialize Clerk with basic configuration
-      clerkInstance = new Clerk(publishableKey);
+      // 检测和记录环境信息
+      if (isTauriEnvironment()) {
+        console.log('🚀 Tauri environment detected, using Tauri-specific configuration');
+      }
+      
+      // Initialize Clerk with configuration (包括 Tauri 特定配置和跨域支持)
+      const clerkOptions = {
+        publishableKey,
+        // 跨域支持配置
+        httpOptions: {
+          credentials: 'include', // 等同于 crossOrigin="include"
+          headers: {
+            'Access-Control-Allow-Credentials': 'true',
+          }
+        },
+        // Clerk Frontend API URL (生产环境)
+        ...(import.meta.env.VITE_CLERK_FRONTEND_API && {
+          frontendApi: import.meta.env.VITE_CLERK_FRONTEND_API
+        }),
+        ...(config.appearance && { appearance: config.appearance }),
+        ...(config.signInUrl && { signInUrl: config.signInUrl }),
+        ...(config.signUpUrl && { signUpUrl: config.signUpUrl }),
+        ...(config.afterSignInUrl && { afterSignInUrl: config.afterSignInUrl }),
+        ...(config.afterSignUpUrl && { afterSignUpUrl: config.afterSignUpUrl }),
+      };
+      
+      console.log('Clerk options:', { 
+        ...clerkOptions, 
+        publishableKey: publishableKey.substring(0, 20) + '...',
+        frontendApi: clerkOptions.frontendApi ? clerkOptions.frontendApi.substring(0, 30) + '...' : 'default'
+      });
+      
+      clerkInstance = new Clerk(clerkOptions.publishableKey, {
+        httpOptions: clerkOptions.httpOptions,
+        ...(clerkOptions.frontendApi && { frontendApi: clerkOptions.frontendApi })
+      });
       
       console.log('Loading Clerk instance...');
-      await clerkInstance.load();
+      
+      // 添加 Tauri 特定的错误处理
+      try {
+        await clerkInstance.load();
+      } catch (loadError) {
+        if (isTauriEnvironment() && (loadError as Error).message?.includes('close')) {
+          console.warn('⚠️ Tauri-specific Clerk loading issue detected, attempting recovery...');
+          // 稍等片刻后重试
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await clerkInstance.load();
+        } else {
+          throw loadError;
+        }
+      }
       
       console.log('Clerk instance loaded successfully');
       return clerkInstance;
@@ -110,9 +180,16 @@ export const signIn = async (emailAddress: string, password: string) => {
     });
 
     console.log('Sign in attempt status:', signInAttempt.status);
-    console.log('Sign in attempt details:', JSON.stringify(signInAttempt, null, 2));
 
     if (signInAttempt.status === 'complete') {
+      // 在 Tauri 环境中添加特殊处理
+      if (isTauriEnvironment()) {
+        console.log('🚀 Tauri environment: handling sign-in completion');
+        
+        // 添加延迟以确保状态稳定
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
       await clerk.setActive({ session: signInAttempt.createdSessionId });
       console.log('Sign in completed successfully');
       return signInAttempt;
@@ -122,10 +199,25 @@ export const signIn = async (emailAddress: string, password: string) => {
       throw new Error(`Sign in incomplete: ${signInAttempt.status}`);
     }
   } catch (error) {
+    // Tauri 特定错误处理
+    if (isTauriEnvironment() && error instanceof Error && error.message?.includes('close')) {
+      console.warn('⚠️ Tauri-specific error detected during sign-in, handling gracefully');
+      // 尝试获取当前会话状态
+      try {
+        if (clerk.user) {
+          console.log('✅ User is actually signed in despite the error');
+          return { status: 'complete', createdSessionId: clerk.session?.id };
+        }
+      } catch (recoveryError) {
+        console.warn('Recovery attempt failed:', recoveryError);
+      }
+    }
+    
     console.error('Sign in error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      error
+      error,
+      isTauri: isTauriEnvironment()
     });
     throw error;
   }
@@ -165,10 +257,30 @@ export const signOut = async () => {
   
   try {
     console.log('Signing out...');
+    
+    if (isTauriEnvironment()) {
+      console.log('🚀 Tauri environment: handling sign-out');
+    }
+    
     await clerk.signOut();
     console.log('Sign out completed');
   } catch (error) {
-    console.error('Sign out error:', error);
+    // Tauri 特定错误处理
+    if (isTauriEnvironment() && error instanceof Error && error.message?.includes('close')) {
+      console.warn('⚠️ Tauri-specific error during sign-out, checking if user is actually signed out');
+      
+      // 检查用户是否实际已经登出
+      if (!clerk.user) {
+        console.log('✅ User is actually signed out despite the error');
+        return; // 成功登出
+      }
+    }
+    
+    console.error('Sign out error:', {
+      error,
+      isTauri: isTauriEnvironment(),
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
     throw error;
   }
 };
