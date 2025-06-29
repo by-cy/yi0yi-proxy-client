@@ -21,7 +21,6 @@
     "release-alpha-version": "node scripts/release-alpha_version.mjs",
     "verify-config": "node scripts/verify-production-config.js",
     "configure-clerk": "node scripts/configure-clerk-origins.js",
-    "test-tauri-clerk": "node scripts/test-tauri-clerk.cjs",
     "test-crossorigin": "node scripts/test-crossorigin.cjs",
     "prepare": "husky",
     "clippy": "cargo clippy  --manifest-path ./src-tauri/Cargo.toml"

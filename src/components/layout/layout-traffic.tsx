@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { useClashInfo } from "@/hooks/use-clash";
+import { useVerge } from "@/hooks/use-verge";
+import { useVisibility } from "@/hooks/use-visibility";
+import { gc, isDebugEnabled } from "@/services/api";
+import parseTraffic from "@/utils/parse-traffic";
+import { createAuthSockette } from "@/utils/websocket";
 import {
   ArrowDownwardRounded,
   ArrowUpwardRounded,
   MemoryRounded,
 } from "@mui/icons-material";
-import { useClashInfo } from "@/hooks/use-clash";
-import { useVerge } from "@/hooks/use-verge";
-import { TrafficGraph, type TrafficRef } from "./traffic-graph";
-import { useVisibility } from "@/hooks/use-visibility";
-import parseTraffic from "@/utils/parse-traffic";
-import useSWRSubscription from "swr/subscription";
-import { createSockette, createAuthSockette } from "@/utils/websocket";
+import { Box, Typography } from "@mui/material";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { isDebugEnabled, gc } from "@/services/api";
+import useSWRSubscription from "swr/subscription";
+import { TrafficGraph, type TrafficRef } from "./traffic-graph";
 
 interface MemoryUsage {
   inuse: number;
@@ -64,7 +64,7 @@ export const LayoutTraffic = () => {
         },
         onerror(event) {
           console.error("[Traffic] WebSocket 连接错误", event);
-          this.close();
+          s.close();
           next(null, { up: 0, down: 0 });
         },
         onclose(event) {
@@ -119,7 +119,7 @@ export const LayoutTraffic = () => {
         },
         onerror(event) {
           console.error("[Memory] WebSocket 连接错误", event);
-          this.close();
+          s.close();
           next(null, { inuse: 0 });
         },
         onclose(event) {

@@ -1,9 +1,6 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-svgr/client" />
 
-// 首先加载 Tauri Clerk polyfill（必须在其他导入之前）
-import "./polyfills/tauri-clerk.js";
-
 import "./assets/styles/index.scss";
 
 import { ResizeObserver } from "@juggle/resize-observer";

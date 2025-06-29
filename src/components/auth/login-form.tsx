@@ -2,15 +2,15 @@ import { initializeClerk, signIn, signUp } from "@/services/clerk";
 import { handleSessionConflict, safeSignIn } from "@/services/session-manager";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import {
-  Alert,
-  Box,
-  Button,
-  IconButton,
-  InputAdornment,
-  Link,
-  TextField,
-  Typography,
-  useTheme,
+    Alert,
+    Box,
+    Button,
+    IconButton,
+    InputAdornment,
+    Link,
+    TextField,
+    Typography,
+    useTheme,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
