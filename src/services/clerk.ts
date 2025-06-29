@@ -1,20 +1,29 @@
 import { Clerk } from '@clerk/clerk-js';
 
-// Clerk configuration - 使用实际的Clerk密钥
-const CLERK_CONFIG = {
-  publishableKey: 'pk_test_c3VwcmVtZS1qYXZlbGluLTQ3LmNsZXJrLmFjY291bnRzLmRldiQ'
+// Clerk configuration - 根据环境使用不同密钥
+const getClerkConfig = () => {
+  // 优先使用环境变量
+  const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_c3VwcmVtZS1qYXZlbGluLTQ3LmNsZXJrLmFjY291bnRzLmRldiQ';
+  
+  return {
+    publishableKey,
+    environment: publishableKey.startsWith('pk_live_') ? 'production' : 'development'
+  };
 };
 
 const validateClerkConfig = (): boolean => {
+  const config = getClerkConfig();
   const isValid = !!(
-    CLERK_CONFIG.publishableKey && 
-    CLERK_CONFIG.publishableKey.startsWith('pk_')
+    config.publishableKey && 
+    config.publishableKey.startsWith('pk_')
   );
   
   if (!isValid) {
-    console.warn('Clerk configuration is not valid. Please check your Clerk keys.');
+    console.warn('❌ Clerk configuration is not valid. Please check your Clerk keys.');
   } else {
-    console.log('Clerk configuration validated successfully');
+    console.log(`✅ Clerk configuration validated successfully`);
+    console.log(`📦 Environment: ${config.environment}`);
+    console.log(`🔑 Using key: ${config.publishableKey.substring(0, 15)}...`);
   }
   
   return isValid;
@@ -40,7 +49,17 @@ export const initializeClerk = async (retries = 3): Promise<Clerk> => {
         throw new Error('Invalid Clerk configuration. Please check your Publishable Key.');
       }
       
-      const publishableKey = CLERK_CONFIG.publishableKey;
+      // 在 CI 环境中显示详细配置信息
+      if (process.env.CI) {
+        const config = getClerkConfig();
+        console.log(`🏗️ CI Build Environment Detected`);
+        console.log(`📦 Environment: ${config.environment}`);
+        console.log(`🔑 Publishable Key: ${config.publishableKey}`);
+        console.log(`🌐 Frontend API: ${import.meta.env.VITE_CLERK_FRONTEND_API || 'default'}`);
+      }
+      
+      const config = getClerkConfig();
+      const publishableKey = config.publishableKey;
       console.log('Creating new Clerk instance with key:', publishableKey.substring(0, 20) + '...');
       
       // Initialize Clerk with basic configuration

@@ -19,6 +19,7 @@
     "fix-alpha-version": "node scripts/fix-alpha_version.mjs",
     "release-version": "node scripts/release_version.mjs",
     "release-alpha-version": "node scripts/release-alpha_version.mjs",
+    "verify-config": "node scripts/verify-production-config.js",
     "prepare": "husky",
     "clippy": "cargo clippy  --manifest-path ./src-tauri/Cargo.toml"
   },

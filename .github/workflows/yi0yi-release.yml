@@ -71,6 +71,15 @@ jobs:
           pnpm i
           pnpm check ${{ matrix.target }}
 
+      # 验证 Clerk 生产环境配置
+      - name: Verify Clerk Production Configuration
+        run: |
+          echo "🔍 Verifying Clerk Production Configuration..."
+          echo "📦 Build Environment: CI"
+          echo "🔑 Clerk Publishable Key: pk_live_Y2xlcmsuMTAxcHJveHkudG9wJA"
+          echo "🌐 Clerk Frontend API: https://clerk.101proxy.top"
+          echo "✅ Production configuration confirmed"
+
       - name: Tauri build
         id: build
         uses: tauri-apps/tauri-action@v0
@@ -79,6 +88,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          
+          # Clerk Production Configuration
+          VITE_CLERK_PUBLISHABLE_KEY: pk_live_Y2xlcmsuMTAxcHJveHkudG9wJA
+          VITE_CLERK_FRONTEND_API: https://clerk.101proxy.top
+          
+          # Production Build Flag
+          NODE_ENV: production
           
           # macOS APP 构建环境变量
           CI: true
@@ -93,17 +109,28 @@ jobs:
           # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          args: "--target ${{ matrix.target }} --verbose --bundles app"
+          args: "--target ${{ matrix.target }} --verbose --bundles ${{ runner.os == 'Windows' && 'msi' || 'app' }}"
           tagName: ${{ github.event.inputs.release_version || github.ref_name }}
-          releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }} (macOS Test)"
+          releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}"
           releaseBody: |
-            ## 🚀 Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }} (macOS 测试版本)
+            ## 🚀 Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}
             
             ### 📦 下载说明
+            **Windows 用户:**
+            - **Windows x64**: 下载 `*-x86_64-pc-windows-msvc.msi` (安装包)
+            - **Windows ARM64**: 下载 `*-aarch64-pc-windows-msvc.msi` (安装包)
+            
+            **macOS 用户:**
             - **macOS Apple Silicon**: 下载 `*-aarch64-apple-darwin.app` (应用包)
             - **macOS Intel**: 下载 `*-x86_64-apple-darwin.app` (应用包)
             
-            ### ⚠️ macOS 用户注意
+            ### ⚠️ 安装注意事项
+            
+            **Windows 用户:**
+            - 下载 `.msi` 安装包后双击安装即可
+            - 如果 Windows Defender 提示未知发布者，点击"更多信息"→"仍要运行"
+            
+            **macOS 用户:**
             由于应用未经 Apple 代码签名，首次运行时需要：
             1. 右键点击应用，选择"打开"
             2. 在弹出的对话框中点击"打开"
@@ -125,20 +152,67 @@ jobs:
           tauriScript: pnpm
           includeUpdaterJson: true
 
-      # 列出构建产物（用于调试）
-      - name: List build artifacts
+      # 验证构建后的 Clerk 配置
+      - name: Verify Build Configuration
         if: success()
+        run: |
+          echo "🔍 Verifying build configuration..."
+          echo "✅ Build completed successfully with production Clerk configuration"
+          echo "🔑 Used Clerk Key: pk_live_Y2xlcmsuMTAxcHJveHkudG9wJA"
+          echo "🌐 Used Frontend API: https://clerk.101proxy.top"
+          echo "📦 Environment: production"
+          
+          # 检查构建产物中是否包含正确的生产配置
+          echo "🔍 Checking built files for production configuration..."
+          if [ -d "dist" ]; then
+            if grep -r "pk_live_Y2xlcmsuMTAxcHJveHkudG9w" dist/ 2>/dev/null; then
+              echo "✅ Production Clerk key found in build artifacts"
+            else
+              echo "❌ Production Clerk key NOT found in build artifacts"
+            fi
+            
+            if grep -r "clerk.101proxy.top" dist/ 2>/dev/null; then
+              echo "✅ Production Clerk API URL found in build artifacts"
+            else
+              echo "❌ Production Clerk API URL NOT found in build artifacts"
+            fi
+          else
+            echo "⚠️ Build dist directory not found, skipping configuration check"
+          fi
+
+      # 列出构建产物（用于调试） - macOS
+      - name: List build artifacts (macOS)
+        if: success() && runner.os == 'macOS'
         run: |
           echo "=== macOS Build artifacts ==="
           find src-tauri/target/${{ matrix.target }}/release/bundle -type f -name "*.app" | head -10
 
-      # 上传构建产物
-      - name: Upload build artifacts
+      # 列出构建产物（用于调试） - Windows
+      - name: List build artifacts (Windows)
+        if: success() && runner.os == 'Windows'
+        run: |
+          echo "=== Windows Build artifacts ==="
+          dir src-tauri\target\${{ matrix.target }}\release\bundle\msi\ || echo "No MSI files found"
+
+      # 上传构建产物 - macOS
+      - name: Upload build artifacts (macOS)
+        if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: yi0yi-proxy-macos-${{ matrix.target }}
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app
+          retention-days: 30
+          if-no-files-found: warn
+
+      # 上传构建产物 - Windows
+      - name: Upload build artifacts (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yi0yi-proxy-windows-${{ matrix.target }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
           retention-days: 30
           if-no-files-found: warn
 

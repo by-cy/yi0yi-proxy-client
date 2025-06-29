@@ -1,17 +1,65 @@
-# 请在项目根目录创建 .env 文件，并添加以下内容：
+# Clerk 环境配置指南
 
-# Clerk Configuration
-# Publishable Key (用于前端)
+## 🚨 重要：401 错误解决方案
+
+如果你在构建后的应用中遇到 401 Unauthorized 错误，这是因为使用了开发环境密钥进行生产构建。
+
+## 📁 开发环境配置 (.env)
+
+在项目根目录创建 .env 文件：
+
+```bash
+# Clerk Development Configuration
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_c3VwcmVtZS1qYXZlbGluLTQ3LmNsZXJrLmFjY291bnRzLmRldiQ
-
-# Frontend API URL
 VITE_CLERK_FRONTEND_API=https://supreme-javelin-47.clerk.accounts.dev
-
-# Development Environment
 NODE_ENV=development
+```
 
-# 创建步骤：
-# 1. 在项目根目录运行: touch .env
-# 2. 将上述内容复制到 .env 文件中
+## 🚀 生产环境配置 (.env.production)
+
+### 选项 1: 创建 Production 应用 (推荐)
+
+1. 登录 [Clerk Dashboard](https://dashboard.clerk.com)
+2. 创建新的 Production 应用或升级现有应用
+3. 创建 `.env.production` 文件：
+
+```bash
+# Clerk Production Configuration
+VITE_CLERK_PUBLISHABLE_KEY=pk_live_YOUR_PRODUCTION_KEY_HERE
+VITE_CLERK_FRONTEND_API=https://your-production-instance.clerk.accounts.dev
+NODE_ENV=production
+```
+
+### 选项 2: 配置开发应用域名白名单
+
+1. 登录 Clerk Dashboard
+2. 进入应用设置 → Domains
+3. 添加你的应用运行域名
+
+## 📝 构建命令
+
+```bash
+# 开发构建
+pnpm dev
+
+# 生产构建 (会自动使用 .env.production)
+pnpm build
+
+# 测试构建
+pnpm preview
+```
+
+## 🔧 GitHub Actions 环境变量
+
+在 GitHub Repository Settings → Secrets 中添加：
+
+```bash
+VITE_CLERK_PUBLISHABLE_KEY_PROD=pk_live_your_production_key
+VITE_CLERK_FRONTEND_API_PROD=https://your-production-instance.clerk.accounts.dev
+```
+
+## 创建步骤：
+# 1. 在项目根目录运行: touch .env .env.production
+# 2. 将对应内容复制到文件中
 # 3. 保存文件
-# 4. 重启开发服务器 
+# 4. 重启开发服务器或重新构建 
