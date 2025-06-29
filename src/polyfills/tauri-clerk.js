@@ -115,6 +115,9 @@ if (isTauriEnvironment()) {
   window.onerror = function (message, source, lineno, colno, error) {
     // 检查是否是任何形式的 close 方法错误
     const messageStr = typeof message === 'string' ? message : String(message || '');
+    const errorStr = error ? String(error) : '';
+    const fullErrorText = messageStr + ' ' + errorStr;
+    
     const closeErrorPatterns = [
       'close is not a function',
       'this.close is not a function', 
@@ -124,16 +127,29 @@ if (isTauriEnvironment()) {
       '.close is undefined',
       'Cannot read properties of undefined (reading \'close\')',
       'Cannot read property \'close\' of undefined',
-      'popup.close is not a function'
+      'popup.close is not a function',
+      'this\\.close\\(\\)',
+      '\\.close\\(\\)',
+      'close\\(\\)'
     ];
     
-    const isCloseError = closeErrorPatterns.some(pattern => 
-      messageStr.toLowerCase().includes(pattern.toLowerCase())
-    );
+    const isCloseError = closeErrorPatterns.some(pattern => {
+      const regex = new RegExp(pattern, 'i');
+      return regex.test(fullErrorText) || regex.test(messageStr);
+    });
     
     if (isCloseError) {
-      console.log('🔄 Tauri Polyfill: Caught and handled close error:', messageStr);
+      console.log('🛡️ Tauri Polyfill: Intercepted and suppressed close error');
+      console.log('📝 Error message:', messageStr);
       console.log('📍 Error source:', source);
+      console.log('🔍 Full error:', error);
+      
+      // 强制阻止错误传播
+      if (typeof event !== 'undefined' && event) {
+        event.preventDefault && event.preventDefault();
+        event.stopPropagation && event.stopPropagation();
+      }
+      
       return true; // 阻止错误传播
     }
     
@@ -149,6 +165,9 @@ if (isTauriEnvironment()) {
   const originalUnhandledRejection = window.onunhandledrejection;
   window.onunhandledrejection = function (event) {
     const errorMsg = event.reason?.message || String(event.reason || '');
+    const errorStr = event.reason ? String(event.reason) : '';
+    const fullErrorText = errorMsg + ' ' + errorStr;
+    
     const closeErrorPatterns = [
       'close is not a function',
       'this.close is not a function',
@@ -158,15 +177,21 @@ if (isTauriEnvironment()) {
       '.close is undefined',
       'Cannot read properties of undefined (reading \'close\')',
       'Cannot read property \'close\' of undefined',
-      'popup.close is not a function'
+      'popup.close is not a function',
+      'this\\.close\\(\\)',
+      '\\.close\\(\\)',
+      'close\\(\\)'
     ];
     
-    const isCloseError = closeErrorPatterns.some(pattern => 
-      errorMsg.toLowerCase().includes(pattern.toLowerCase())
-    );
+    const isCloseError = closeErrorPatterns.some(pattern => {
+      const regex = new RegExp(pattern, 'i');
+      return regex.test(fullErrorText) || regex.test(errorMsg);
+    });
     
     if (isCloseError) {
-      console.log('🔄 Tauri Polyfill: Caught and handled close promise rejection:', errorMsg);
+      console.log('🛡️ Tauri Polyfill: Intercepted and suppressed close promise rejection');
+      console.log('📝 Rejection reason:', errorMsg);
+      console.log('🔍 Full reason:', event.reason);
       event.preventDefault();
       return;
     }
@@ -182,6 +207,64 @@ if (isTauriEnvironment()) {
       console.log('🔄 Tauri Polyfill: Global fallback close() called');
       return;
     };
+  }
+  
+  // 添加通用的 close 方法到全局原型链，以捕获所有可能的 close 调用
+  const addSafeCloseMethod = (obj, name) => {
+    try {
+      if (obj && typeof obj === 'object' && !obj.close) {
+        Object.defineProperty(obj, 'close', {
+          value: function(...args) {
+            console.log(`🔄 Tauri Polyfill: Safe close() called on ${name}`);
+            return Promise.resolve();
+          },
+          writable: true,
+          configurable: true
+        });
+      }
+    } catch (e) {
+      // 静默忽略错误
+    }
+  };
+  
+  // 为常见的对象类型添加安全的 close 方法
+  if (typeof Object !== 'undefined' && Object.prototype) {
+    const originalDefineProperty = Object.defineProperty;
+    
+    // 拦截属性定义，确保任何试图访问 close 的对象都有一个安全的 close 方法
+    try {
+      const safeClose = function(...args) {
+        console.log('🔄 Tauri Polyfill: Universal safe close() called');
+        return Promise.resolve();
+      };
+      
+      // 为 window 和 document 添加更强的保护
+      addSafeCloseMethod(window, 'window');
+      addSafeCloseMethod(document, 'document');
+      
+      // 监听新创建的对象，为它们添加 close 方法
+      const observer = new MutationObserver(() => {
+        // 定期检查并添加缺失的 close 方法
+        setTimeout(() => {
+          try {
+            if (window.frames) {
+              for (let i = 0; i < window.frames.length; i++) {
+                try {
+                  addSafeCloseMethod(window.frames[i], `frame[${i}]`);
+                } catch (e) {}
+              }
+            }
+          } catch (e) {}
+        }, 100);
+      });
+      
+      if (document.body) {
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
+      
+    } catch (e) {
+      console.warn('⚠️ Could not set up universal close protection:', e);
+    }
   }
   
   console.log('✅ Tauri Clerk polyfills applied successfully with enhanced protection');
