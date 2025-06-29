@@ -156,6 +156,7 @@ jobs:
       # 验证构建后的 Clerk 配置
       - name: Verify Build Configuration
         if: success()
+        shell: bash
         run: |
           echo "🔍 Verifying build configuration..."
           echo "✅ Build completed successfully with production Clerk configuration"
