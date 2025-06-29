@@ -69,7 +69,7 @@ export const setupTauriErrorHandler = () => {
   
   // 处理未捕获的错误
   const originalErrorHandler = window.onerror;
-  window.onerror = function(message, source, lineno, colno, error) {
+  window.onerror = function(this: Window, message, source, lineno, colno, error) {
     try {
       if (typeof message === 'string' && isTauriClerkError(message)) {
         handleTauriClerkError(message, 'Global Error Handler');
@@ -94,7 +94,7 @@ export const setupTauriErrorHandler = () => {
   
   // 处理未捕获的 Promise 拒绝
   const originalUnhandledRejection = window.onunhandledrejection;
-  window.onunhandledrejection = function(event) {
+  window.onunhandledrejection = function(this: Window, event) {
     try {
       const error = event.reason;
       if (error && isTauriClerkError(error)) {
@@ -113,8 +113,9 @@ export const setupTauriErrorHandler = () => {
   };
   
   // 监听自定义错误事件
-  window.addEventListener('tauri-clerk-error-handled', (event: CustomEvent) => {
-    console.log('🎯 Tauri Clerk error was handled:', event.detail);
+  window.addEventListener('tauri-clerk-error-handled', (event: Event) => {
+    const customEvent = event as CustomEvent;
+    console.log('🎯 Tauri Clerk error was handled:', customEvent.detail);
   });
   
   console.log('✅ Tauri error handler setup completed');
