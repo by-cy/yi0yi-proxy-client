@@ -18,10 +18,15 @@ import { AppDataProvider } from "./providers/app-data-provider";
 import { AuthProvider } from "./providers/auth-provider";
 import "./services/i18n";
 import {
-    LoadingCacheProvider,
-    ThemeModeProvider,
-    UpdateStateProvider,
+  LoadingCacheProvider,
+  ThemeModeProvider,
+  UpdateStateProvider,
 } from "./services/states";
+// Import profile management functions
+import {
+  deleteProfile,
+  getProfiles
+} from "./services/cmds";
 
 // 标记初始化完成状态，供其他组件使用
 export let appInitialized = false;
@@ -50,10 +55,25 @@ const contexts = [
 // Initialize app by deleting all profiles before rendering
 async function initializeApp() {
   try {
+    // Get all profiles
+    const profiles = await getProfiles();
+    const items = profiles?.items || [];
+    
+    // Delete all profiles
+    if (items.length > 0) {
+      console.log(`Deleting ${items.length} profiles during app initialization...`);
+      for (const item of items) {
+        if (item && item.uid) {
+          await deleteProfile(item.uid);
+        }
+      }
+      console.log("All profiles have been deleted successfully");
+    }
+    
     // 标记初始化完成
     appInitialized = true;
   } catch (err) {
-    console.error("Failed to initialize app:", err);
+    console.error("Failed to delete profiles during initialization:", err);
     // 即使出错也标记为初始化完成，以免阻塞后续流程
     appInitialized = true;
   }

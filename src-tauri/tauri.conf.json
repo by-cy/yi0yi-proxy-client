@@ -29,7 +29,7 @@
     "beforeBuildCommand": "pnpm run web:build",
     "frontendDist": "../dist",
     "beforeDevCommand": "pnpm run web:dev",
-    "devUrl": "http://localhost:3000/"
+    "devUrl": "http://localhost:9097/"
   },
   "productName": "Yi0Yi Proxy",
   "identifier": "io.github.yi0yi-proxy.yi0yi-proxy",
@@ -46,7 +46,6 @@
     "deep-link": {
       "desktop": {
         "schemes": [
-          "clash",
           "yi0yi-proxy"
         ]
       }

@@ -1,5 +1,6 @@
 import authService from "@/services/auth-service";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { updateProxyConfiguration } from '../services/proxy-config';
 import trafficReporter from '../services/traffic-reporter';
 
 interface AuthState {
@@ -33,6 +34,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user: null,
     isLoading: true,
   });
+  
+  // 标记是否已经加载过proxy配置，确保只加载一次
+  const [hasLoadedProxyConfig, setHasLoadedProxyConfig] = useState(false);
 
   const updateAuthState = useCallback(() => {
     const isAuthenticated = authService.isAuthenticated();
@@ -56,11 +60,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('🚪 开始登出...');
       await authService.logout(logoutAllDevices);
       setAuthState(prev => ({ ...prev, isLoading: true }));
+      // 重置proxy配置加载标志，允许重新登录时再次加载
+      setHasLoadedProxyConfig(false);
       updateAuthState();
       console.log('✅ 登出成功');
     } catch (error) {
       console.error('❌ 登出失败:', error);
       // 即使出错也更新状态，确保界面正确显示
+      setHasLoadedProxyConfig(false);
       updateAuthState();
     }
   };
@@ -77,6 +84,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (isAuthenticated && currentUser) {
         trafficReporter.resetSession();
         console.log('🚀 流量上报会话已重置');
+        
+        // 如果用户已认证且还没有加载过proxy配置，自动加载一次
+        if (!hasLoadedProxyConfig) {
+          console.log('🌐 用户首次登录，开始加载proxy配置...');
+          try {
+            const result = await updateProxyConfiguration();
+            if (result.success) {
+              console.log('✅ Proxy配置加载成功:', result.message);
+              setHasLoadedProxyConfig(true);
+            } else {
+              console.error('❌ Proxy配置加载失败:', result.message);
+            }
+          } catch (error) {
+            console.error('❌ 加载proxy配置时出错:', error);
+          }
+        }
       }
       
       console.log('✅ 认证状态刷新完成:', { isAuthenticated, user: currentUser });
