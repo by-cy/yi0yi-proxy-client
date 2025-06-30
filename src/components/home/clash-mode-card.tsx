@@ -1,16 +1,16 @@
-import { useTranslation } from "react-i18next";
-import { Box, Typography, Paper, Stack, Fade } from "@mui/material";
-import { useLockFn } from "ahooks";
+import { useVerge } from "@/hooks/use-verge";
+import { useAppData } from "@/providers/app-data-provider";
 import { closeAllConnections } from "@/services/api";
 import { patchClashMode } from "@/services/cmds";
-import { useVerge } from "@/hooks/use-verge";
 import {
+  DirectionsRounded,
   LanguageRounded,
   MultipleStopRounded,
-  DirectionsRounded,
 } from "@mui/icons-material";
+import { Box, Paper, Stack, Typography } from "@mui/material";
+import { useLockFn } from "ahooks";
 import { useMemo } from "react";
-import { useAppData } from "@/providers/app-data-provider";
+import { useTranslation } from "react-i18next";
 
 export const ClashModeCard = () => {
   const { t } = useTranslation();
@@ -20,8 +20,8 @@ export const ClashModeCard = () => {
   // 支持的模式列表
   const modeList = useMemo(() => ["rule", "global", "direct"] as const, []);
 
-  // 直接使用API返回的模式，不维护本地状态
-  const currentMode = clashConfig?.mode?.toLowerCase();
+  // 安全获取当前模式，提供默认值
+  const currentMode = clashConfig?.mode?.toLowerCase() || "rule";
 
   // 模式图标映射
   const modeIcons = useMemo(() => ({
@@ -97,6 +97,14 @@ export const ClashModeCard = () => {
     hyphens: "auto",
   };
 
+  // 安全获取模式描述
+  const getModeDescription = () => {
+    if (!currentMode || !modeList.includes(currentMode as any)) {
+      return t("rule Mode Description"); // 默认返回rule模式描述
+    }
+    return t(`${currentMode} Mode Description`);
+  };
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
       {/* 模式选择按钮组 */}
@@ -148,7 +156,7 @@ export const ClashModeCard = () => {
           component="div"
           sx={descriptionStyles}
         >
-          {t(`${currentMode} Mode Description`)}
+          {getModeDescription()}
         </Typography>
       </Box>
     </Box>

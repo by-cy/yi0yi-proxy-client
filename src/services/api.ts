@@ -336,3 +336,14 @@ export const getIpInfo = async () => {
     timezone: string;
   };
 };
+
+// 添加认证相关的 API 配置
+export const AUTH_API_CONFIG = {
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  timeout: 10000,
+  endpoints: {
+    login: '/api/auth/login',
+    refresh: '/api/auth/refresh',
+    logout: '/api/auth/logout'
+  }
+};

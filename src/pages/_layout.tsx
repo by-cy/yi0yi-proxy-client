@@ -6,8 +6,9 @@ import { LayoutTraffic } from "@/components/layout/layout-traffic";
 import { useCustomTheme } from "@/components/layout/use-custom-theme";
 import { useClashInfo } from "@/hooks/use-clash";
 import { useListen } from "@/hooks/use-listen";
+import { useTrafficMonitor } from "@/hooks/use-traffic-monitor";
 import { useVerge } from "@/hooks/use-verge";
-import { useAppAuth } from "@/providers/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { getAxios } from "@/services/api";
 import { useThemeMode } from "@/services/states";
 import getSystem from "@/utils/get-system";
@@ -131,14 +132,19 @@ const Layout = () => {
   const location = useLocation();
   const routersEles = useRoutes(routers);
   const { addListener, setupCloseListener } = useListen();
-  const { isLoggedIn, logout } = useAppAuth();
+  const { isSignedIn, signOut } = useAuth();
+
+  // 初始化独立的流量监控（后台运行，不影响UI）
+  const { resetTrafficStats } = useTrafficMonitor();
 
   // 判断是否为登录页面
   const isLoginPage = location.pathname === "/login";
 
   // 退出登录处理
   const handleLogout = () => {
-    logout();
+    // 重置流量统计
+    resetTrafficStats();
+    signOut();
     navigate("/login");
     Notice.info(t("Logged out successfully"));
   };
@@ -314,7 +320,7 @@ const Layout = () => {
                 </div>
               </div>
 
-              {isLoggedIn && (
+              {isSignedIn && (
                 <>
                   <List className="the-menu">
                     {protectedRoutes

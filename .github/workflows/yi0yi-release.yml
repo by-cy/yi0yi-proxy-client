@@ -65,13 +65,11 @@ jobs:
           pnpm i
           pnpm check ${{ matrix.target }}
 
-      # 验证 Clerk 生产环境配置
-      - name: Verify Clerk Production Configuration
+      # 验证构建环境配置
+      - name: Verify Build Configuration
         run: |
-          echo "🔍 Verifying Clerk Production Configuration..."
+          echo "🔍 Verifying Build Configuration..."
           echo "📦 Build Environment: CI"
-          echo "🔑 Clerk Publishable Key: pk_live_Y2xlcmsuMTAxcHJveHkudG9wJA"
-          echo "🌐 Clerk Frontend API: https://clerk.101proxy.top"
           echo "✅ Production configuration confirmed"
 
       - name: Tauri build
@@ -82,10 +80,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          
-          # Clerk Production Configuration
-          VITE_CLERK_PUBLISHABLE_KEY: pk_live_Y2xlcmsuMTAxcHJveHkudG9wJA
-          VITE_CLERK_FRONTEND_API: https://clerk.101proxy.top
           
           # Production Build Flag
           NODE_ENV: production
@@ -137,43 +131,31 @@ jobs:
             - 基于 Tauri 2 构建的现代化代理客户端
             - 支持多种代理协议和规则配置
             - 优化的用户界面和性能改进
-            - 完整的 Clerk 身份验证集成
+            - 简化的身份验证系统
             
             ### 🛠️ 技术栈
             - **前端**: React + TypeScript + Material-UI
             - **后端**: Rust + Tauri 2
-            - **认证**: Clerk
+            - **认证**: 简化本地认证
             - **构建**: Vite + pnpm
           tauriScript: pnpm
           includeUpdaterJson: true
 
-      # 验证构建后的 Clerk 配置
-      - name: Verify Build Configuration
+      # 验证构建后的配置
+      - name: Verify Build Artifacts
         if: success()
         shell: bash
         run: |
-          echo "🔍 Verifying build configuration..."
-          echo "✅ Build completed successfully with production Clerk configuration"
-          echo "🔑 Used Clerk Key: pk_live_Y2xlcmsuMTAxcHJveHkudG9wJA"
-          echo "🌐 Used Frontend API: https://clerk.101proxy.top"
+          echo "🔍 Verifying build artifacts..."
+          echo "✅ Build completed successfully"
           echo "📦 Environment: production"
           
-          # 检查构建产物中是否包含正确的生产配置
-          echo "🔍 Checking built files for production configuration..."
+          # 检查构建产物
+          echo "🔍 Checking built files..."
           if [ -d "dist" ]; then
-            if grep -r "pk_live_Y2xlcmsuMTAxcHJveHkudG9w" dist/ 2>/dev/null; then
-              echo "✅ Production Clerk key found in build artifacts"
-            else
-              echo "❌ Production Clerk key NOT found in build artifacts"
-            fi
-            
-            if grep -r "clerk.101proxy.top" dist/ 2>/dev/null; then
-              echo "✅ Production Clerk API URL found in build artifacts"
-            else
-              echo "❌ Production Clerk API URL NOT found in build artifacts"
-            fi
+            echo "✅ Build artifacts found"
           else
-            echo "⚠️ Build dist directory not found, skipping configuration check"
+            echo "⚠️ Build dist directory not found"
           fi
 
       # 列出构建产物（用于调试） - macOS

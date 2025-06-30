@@ -1,12 +1,13 @@
-import { createContext, useContext, useMemo, useEffect } from "react";
+import { useClashInfo } from "@/hooks/use-clash";
+import { useVisibility } from "@/hooks/use-visibility";
+import { getClashConfig, getProxies, getProxyProviders, getRuleProviders, getRules } from "@/services/api";
+import { getAppUptime, getRunningMode, getSystemProxy } from "@/services/cmds";
+import { createAuthSockette } from "@/utils/websocket";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import useSWR from "swr";
 import useSWRSubscription from "swr/subscription";
-import { getProxies, getRules, getClashConfig, getProxyProviders, getRuleProviders } from "@/services/api";
-import { getSystemProxy, getRunningMode, getAppUptime } from "@/services/cmds";
-import { useClashInfo } from "@/hooks/use-clash";
-import { createAuthSockette } from "@/utils/websocket";
-import { useVisibility } from "@/hooks/use-visibility";
-import { REFRESH_DATA_EVENT } from "./auth-provider";
+// 创建一个自定义事件，用于触发数据刷新
+export const REFRESH_DATA_EVENT = 'refresh-app-data';
 
 // 定义AppDataContext类型 - 使用宽松类型
 interface AppDataContextType {

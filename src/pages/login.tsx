@@ -1,5 +1,5 @@
 import LogoSvg from "@/assets/image/logo.svg?react";
-import { LoginForm } from "@/components/auth/login-form";
+import { EnhancedLoginForm } from "@/components/auth/enhanced-login-form";
 import { Box, SvgIcon, Typography, useTheme } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useEffect } from "react";
@@ -157,7 +157,7 @@ const LoginPage: React.FC = () => {
         </Box>
         
         {/* 自定义登录表单 */}
-        <LoginForm />
+        <EnhancedLoginForm />
         
         {/* 移动设备上的版权信息 */}
         <Typography 
