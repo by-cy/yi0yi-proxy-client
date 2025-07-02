@@ -339,16 +339,27 @@ export const getIpInfo = async () => {
 
 // 环境检测和API配置
 const getEnvironment = () => {
-  // 检测是否为开发环境
-  const isDevelopment = import.meta.env.DEV || 
-                        import.meta.env.MODE === 'development' ||
-                        window.location.hostname === 'localhost' ||
-                        window.location.hostname === '127.0.0.1' ||
-                        window.location.port === '9097';
+  // 强化的环境检测逻辑
+  const isTauriApp = typeof window !== 'undefined' && (window as any).__TAURI__;
+  const isViteDev = import.meta.env.DEV === true;
+  const isModeDevelpment = import.meta.env.MODE === 'development';
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isDevPort = window.location.port === '9097';
+  
+  // 在Tauri应用中，优先检查Vite环境变量
+  // 如果是Tauri应用且不是明确的开发模式，则视为生产环境
+  const isDevelopment = isTauriApp 
+    ? (isViteDev || isModeDevelpment)  // Tauri中只看Vite变量
+    : (isViteDev || isModeDevelpment || isLocalhost || isDevPort);  // 浏览器中检查所有条件
   
   return {
     isDevelopment,
-    isProduction: !isDevelopment
+    isProduction: !isDevelopment,
+    isTauriApp,
+    isViteDev,
+    isModeDevelpment,
+    isLocalhost,
+    isDevPort
   };
 };
 
@@ -388,7 +399,14 @@ export const ENVIRONMENT = getEnvironment();
 console.log('🌍 Environment detected:', {
   isDevelopment: ENVIRONMENT.isDevelopment,
   isProduction: ENVIRONMENT.isProduction,
+  isTauriApp: ENVIRONMENT.isTauriApp,
+  isViteDev: ENVIRONMENT.isViteDev,
+  isModeDevelpment: ENVIRONMENT.isModeDevelpment,
+  isLocalhost: ENVIRONMENT.isLocalhost,
+  isDevPort: ENVIRONMENT.isDevPort,
   apiBaseUrl: AUTH_API_CONFIG.baseURL,
   hostname: window.location.hostname,
-  port: window.location.port
+  port: window.location.port,
+  viteModeEnv: import.meta.env.MODE,
+  viteDevEnv: import.meta.env.DEV
 });

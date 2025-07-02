@@ -22,6 +22,7 @@ import {
   ThemeModeProvider,
   UpdateStateProvider,
 } from "./services/states";
+import "./utils/debug-environment";
 // Import profile management functions
 import {
   deleteProfile,

@@ -101,25 +101,51 @@ class AuthService {
    * 获取设备 APP ID
    */
   private getAppId(): string {
-    // 检测运行环境
-    if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+    console.log('🔍 检测APP ID...');
+    
+    // 优先检测 Tauri 环境
+    const isTauriApp = typeof window !== 'undefined' && !!(window as any).__TAURI__;
+    console.log('📱 是否为Tauri应用:', isTauriApp);
+    
+    if (isTauriApp) {
+      // Tauri 应用中的平台检测
       const platform = window.navigator.platform.toLowerCase();
-      if (platform.includes('mac')) {
+      const userAgent = navigator.userAgent.toLowerCase();
+      
+      console.log('🖥️ 平台信息:', { platform, userAgent });
+      
+      // 检测 macOS
+      if (platform.includes('mac') || /mac|darwin/i.test(userAgent)) {
+        console.log('✅ 检测为Mac平台，使用APP_MAC');
         return APP_IDS.MAC;
-      } else if (platform.includes('win')) {
+      }
+      
+      // 检测 Windows
+      if (platform.includes('win') || /win/i.test(userAgent)) {
+        console.log('✅ 检测为Windows平台，使用APP_WINDOWS');
         return APP_IDS.WINDOWS;
       }
+      
+      // Tauri应用但平台检测失败，根据常见情况推断
+      console.warn('⚠️ Tauri应用平台检测失败，使用默认MAC APP ID');
+      return APP_IDS.MAC; // 大部分情况下是Mac
     }
     
-    // 后备检测方法
+    // 非Tauri环境，后备检测方法
     const userAgent = navigator.userAgent.toLowerCase();
-    if (/mac/i.test(userAgent)) {
+    console.log('🌐 浏览器环境，UserAgent:', userAgent);
+    
+    if (/mac|darwin/i.test(userAgent)) {
+      console.log('✅ 浏览器环境检测为Mac');
       return APP_IDS.MAC;
     } else if (/win/i.test(userAgent)) {
+      console.log('✅ 浏览器环境检测为Windows');
       return APP_IDS.WINDOWS;
     }
     
-    return APP_IDS.BROWSER; // 默认值
+    // 最后的默认值
+    console.warn('⚠️ 无法确定具体平台，使用BROWSER APP ID');
+    return APP_IDS.BROWSER;
   }
 
   /**

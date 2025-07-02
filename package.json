@@ -26,6 +26,7 @@
     "test-session-handling": "node scripts/test-session-handling.js",
     "test-environment": "node scripts/test-environment-config.js",
     "verify-environment": "node scripts/verify-environment-urls.js",
+    "diagnose-network": "node scripts/diagnose-network-issue.js",
     "prepare": "husky",
     "clippy": "cargo clippy  --manifest-path ./src-tauri/Cargo.toml"
   },
