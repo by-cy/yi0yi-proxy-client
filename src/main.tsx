@@ -25,7 +25,8 @@ import {
 // Import profile management functions
 import {
   deleteProfile,
-  getProfiles
+  getProfiles,
+  patchVergeConfig
 } from "./services/cmds";
 
 // 标记初始化完成状态，供其他组件使用
@@ -55,6 +56,16 @@ const contexts = [
 // Initialize app by deleting all profiles before rendering
 async function initializeApp() {
   try {
+    // 首先关闭系统代理，确保在未登录状态下系统代理是关闭的
+    try {
+      console.log('🔌 App初始化 - 正在关闭系统代理...');
+      await patchVergeConfig({ enable_system_proxy: false });
+      console.log('✅ 系统代理已关闭');
+    } catch (error) {
+      console.warn('⚠️ 关闭系统代理失败:', error);
+      // 即使失败也继续初始化流程
+    }
+    
     // Get all profiles
     const profiles = await getProfiles();
     const items = profiles?.items || [];

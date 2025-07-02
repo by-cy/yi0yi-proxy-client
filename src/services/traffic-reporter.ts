@@ -23,7 +23,7 @@ interface TrafficStats {
 }
 
 class TrafficReporter {
-  private reportThresholdMB = 500; // 500MB 上报阈值
+  private reportThresholdMB = 0; // 测试模式：设置为0直接上报，生产环境可改为500
   private lastReportedTraffic: TrafficStats = {
     uploadBytes: 0,
     downloadBytes: 0,
@@ -31,6 +31,7 @@ class TrafficReporter {
   };
   private sessionId: string;
   private isEnabled = true;
+  private testMode = true; // 测试模式标志
 
   constructor() {
     // 生成设备会话ID
@@ -41,7 +42,8 @@ class TrafficReporter {
     
     console.log('🚀 TrafficReporter initialized', {
       sessionId: this.sessionId,
-      thresholdMB: this.reportThresholdMB
+      thresholdMB: this.reportThresholdMB,
+      testMode: this.testMode
     });
   }
 
@@ -97,7 +99,20 @@ class TrafficReporter {
    * 更新流量统计并检查是否需要上报
    */
   async updateTraffic(uploadBytes: number, downloadBytes: number): Promise<void> {
-    if (!this.isEnabled || !authService.isAuthenticated()) {
+    if (!this.isEnabled) {
+      console.log('📊 流量上报已禁用，跳过更新');
+      return;
+    }
+    
+    const isAuthenticated = authService.isAuthenticated();
+    const user = authService.getCurrentUser();
+    
+    if (!isAuthenticated || !user?.email) {
+      console.warn('⚠️ 用户未认证或邮箱不可用，跳过流量上报', {
+        isAuthenticated,
+        hasUser: !!user,
+        hasEmail: !!user?.email
+      });
       return;
     }
 
@@ -118,20 +133,27 @@ class TrafficReporter {
         thresholdMB: this.reportThresholdMB
       });
 
-      // 检查是否达到上报阈值
-      if (totalDeltaMB >= this.reportThresholdMB) {
-        console.log(`🚨 流量达到上报阈值 ${this.reportThresholdMB}MB，开始上报...`);
+      // 检查是否达到上报阈值（测试模式下直接上报）
+      if (this.testMode || totalDeltaMB >= this.reportThresholdMB) {
+        if (this.testMode && totalDeltaMB > 0) {
+          console.log(`🧪 测试模式：检测到流量变化 ${totalDeltaMB.toFixed(2)}MB，直接上报...`);
+        } else if (totalDeltaMB >= this.reportThresholdMB) {
+          console.log(`🚨 流量达到上报阈值 ${this.reportThresholdMB}MB，开始上报...`);
+        }
         
-        await this.reportTraffic(uploadDeltaMB, downloadDeltaMB);
-        
-        // 更新已上报的流量基准
-        this.lastReportedTraffic = {
-          uploadBytes: uploadBytes,
-          downloadBytes: downloadBytes,
-          lastReportTime: Date.now()
-        };
-        
-        this.saveReportState();
+        // 只有在有流量变化时才上报
+        if (totalDeltaMB > 0) {
+          await this.reportTraffic(uploadDeltaMB, downloadDeltaMB);
+          
+          // 更新已上报的流量基准
+          this.lastReportedTraffic = {
+            uploadBytes: uploadBytes,
+            downloadBytes: downloadBytes,
+            lastReportTime: Date.now()
+          };
+          
+          this.saveReportState();
+        }
       }
     } catch (error) {
       console.error('❌ 流量更新失败:', error);
@@ -151,9 +173,23 @@ class TrafficReporter {
    */
   private async reportTraffic(uploadMB: number, downloadMB: number): Promise<TrafficReportResponse> {
     try {
+      // 首先检查认证状态
+      const isAuthenticated = authService.isAuthenticated();
+      console.log('🔐 认证状态检查:', { isAuthenticated });
+      
+      if (!isAuthenticated) {
+        throw new Error('用户未认证，无法上报流量');
+      }
+      
       const user = authService.getCurrentUser();
+      console.log('👤 当前用户信息:', { 
+        hasUser: !!user, 
+        hasEmail: !!user?.email,
+        email: user?.email ? user.email.substring(0, 3) + '***' : 'N/A' 
+      });
+      
       if (!user?.email) {
-        throw new Error('用户邮箱不可用');
+        throw new Error(`用户邮箱不可用 - user: ${!!user}, email: ${!!user?.email}`);
       }
 
       const requestData: TrafficReportRequest = {
@@ -267,11 +303,12 @@ class TrafficReporter {
   /**
    * 获取当前配置
    */
-  getConfig(): { sessionId: string; thresholdMB: number; enabled: boolean } {
+  getConfig(): { sessionId: string; thresholdMB: number; enabled: boolean; testMode: boolean } {
     return {
       sessionId: this.sessionId,
       thresholdMB: this.reportThresholdMB,
-      enabled: this.isEnabled
+      enabled: this.isEnabled,
+      testMode: this.testMode
     };
   }
 
@@ -293,12 +330,33 @@ class TrafficReporter {
    * 设置上报阈值
    */
   setReportThreshold(thresholdMB: number): void {
-    if (thresholdMB > 0) {
+    if (thresholdMB >= 0) {
       this.reportThresholdMB = thresholdMB;
       console.log(`🔧 流量上报阈值已设置为: ${thresholdMB}MB`);
     } else {
-      console.warn('⚠️ 流量上报阈值必须大于0');
+      console.warn('⚠️ 流量上报阈值必须大于等于0');
     }
+  }
+
+  /**
+   * 启用/禁用测试模式
+   */
+  setTestMode(enabled: boolean): void {
+    this.testMode = enabled;
+    if (enabled) {
+      console.log('🧪 测试模式已启用 - 将直接上报所有流量变化');
+    } else {
+      console.log(`📊 生产模式已启用 - 阈值: ${this.reportThresholdMB}MB`);
+    }
+  }
+
+  /**
+   * 切换到生产模式
+   */
+  setProductionMode(thresholdMB: number = 500): void {
+    this.testMode = false;
+    this.reportThresholdMB = thresholdMB;
+    console.log(`🚀 已切换到生产模式，上报阈值: ${thresholdMB}MB`);
   }
 
   /**

@@ -315,7 +315,7 @@ const Layout = () => {
                       color: theme => theme.palette.text.primary
                     }}
                   >
-                    101Proxy
+                    YI0YI-加速器
                   </Typography>
                 </div>
               </div>

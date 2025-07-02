@@ -24,6 +24,8 @@
     "test-crossorigin": "node scripts/test-crossorigin.cjs",
     "test-auth-config": "node scripts/test-auth-config.js",
     "test-session-handling": "node scripts/test-session-handling.js",
+    "test-environment": "node scripts/test-environment-config.js",
+    "verify-environment": "node scripts/verify-environment-urls.js",
     "prepare": "husky",
     "clippy": "cargo clippy  --manifest-path ./src-tauri/Cargo.toml"
   },

@@ -337,9 +337,42 @@ export const getIpInfo = async () => {
   };
 };
 
+// 环境检测和API配置
+const getEnvironment = () => {
+  // 检测是否为开发环境
+  const isDevelopment = import.meta.env.DEV || 
+                        import.meta.env.MODE === 'development' ||
+                        window.location.hostname === 'localhost' ||
+                        window.location.hostname === '127.0.0.1' ||
+                        window.location.port === '9097';
+  
+  return {
+    isDevelopment,
+    isProduction: !isDevelopment
+  };
+};
+
+const getApiBaseUrl = () => {
+  const { isDevelopment } = getEnvironment();
+  
+  // 优先使用环境变量设置的URL
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // 根据环境自动选择URL
+  if (isDevelopment) {
+    // 开发环境使用localhost
+    return 'http://localhost:8080';
+  } else {
+    // 生产环境使用远程服务器
+    return 'https://api.101proxy.top';
+  }
+};
+
 // 添加认证相关的 API 配置
 export const AUTH_API_CONFIG = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  baseURL: getApiBaseUrl(),
   timeout: 10000,
   endpoints: {
     login: '/api/auth/login',
@@ -347,3 +380,15 @@ export const AUTH_API_CONFIG = {
     logout: '/api/auth/logout'
   }
 };
+
+// 导出环境信息供其他模块使用
+export const ENVIRONMENT = getEnvironment();
+
+// 调试信息
+console.log('🌍 Environment detected:', {
+  isDevelopment: ENVIRONMENT.isDevelopment,
+  isProduction: ENVIRONMENT.isProduction,
+  apiBaseUrl: AUTH_API_CONFIG.baseURL,
+  hostname: window.location.hostname,
+  port: window.location.port
+});

@@ -3,7 +3,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "bundle": {
     "active": true,
-    "longDescription": "Yi0Yi Proxy",
+    "longDescription": "YI0YI-加速器",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -15,14 +15,14 @@
       "resources",
       "resources/locales/*"
     ],
-    "publisher": "Yi0Yi Proxy",
+    "publisher": "YI0YI-加速器",
     "externalBin": [
       "sidecar/verge-mihomo",
       "sidecar/verge-mihomo-alpha"
     ],
     "copyright": "GNU General Public License v3.0",
     "category": "DeveloperTool",
-    "shortDescription": "Yi0Yi Proxy",
+    "shortDescription": "YI0YI-加速器",
     "createUpdaterArtifacts": true
   },
   "build": {
@@ -31,7 +31,7 @@
     "beforeDevCommand": "pnpm run web:dev",
     "devUrl": "http://localhost:9097/"
   },
-  "productName": "Yi0Yi Proxy",
+  "productName": "YI0YI-加速器",
   "identifier": "io.github.yi0yi-proxy.yi0yi-proxy",
   "plugins": {
     "updater": {

@@ -1,5 +1,6 @@
 import LogoSvg from "@/assets/image/logo.svg?react";
 import { EnhancedLoginForm } from "@/components/auth/enhanced-login-form";
+import { patchVergeConfig } from "@/services/cmds";
 import { Box, SvgIcon, Typography, useTheme } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useEffect } from "react";
@@ -11,6 +12,20 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     console.log("Login page mounted");
+    
+    // 在Login界面初始化时确保系统代理是关闭的
+    const initializeSystemProxy = async () => {
+      try {
+        console.log('🔌 Login页面初始化 - 正在关闭系统代理...');
+        await patchVergeConfig({ enable_system_proxy: false });
+        console.log('✅ 系统代理已关闭');
+      } catch (error) {
+        console.warn('⚠️ 关闭系统代理失败:', error);
+        // 即使失败也不影响用户登录
+      }
+    };
+    
+    initializeSystemProxy();
   }, []);
 
   return (
@@ -90,7 +105,7 @@ const LoginPage: React.FC = () => {
                 mb: 1,
               }}
             >
-              101Proxy
+              YI0YI-加速器
             </Typography>
             <Typography variant="h6" sx={{ opacity: 0.8 }}>
               {t("Next-generation proxy client")}
@@ -118,7 +133,7 @@ const LoginPage: React.FC = () => {
             opacity: 0.7,
           }}
         >
-          © {new Date().getFullYear()} 101Proxy
+          © {new Date().getFullYear()} YI0YI-加速器
         </Typography>
       </Box>
       
@@ -152,7 +167,7 @@ const LoginPage: React.FC = () => {
             inheritViewBox
           />
           <Typography variant="h4" sx={{ fontWeight: 600 }}>
-            101Proxy
+            YI0YI-加速器
           </Typography>
         </Box>
         
@@ -169,7 +184,7 @@ const LoginPage: React.FC = () => {
             display: { xs: "block", md: "none" }
           }}
         >
-          © {new Date().getFullYear()} 101Proxy
+          © {new Date().getFullYear()} YI0YI-加速器
         </Typography>
       </Box>
     </Box>

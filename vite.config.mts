@@ -13,7 +13,7 @@ const monacoEditorPluginDefault = (monacoEditorPlugin as any).default as (
 export default defineConfig({
   root: "src",
   server: {
-    port: 3000,
+    port: 9097,
     headers: {
       "Content-Security-Policy": `
         default-src 'self' http: https: ws: wss: ipc:;

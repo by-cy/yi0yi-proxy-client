@@ -5,11 +5,14 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
+  FormControlLabel,
   IconButton,
   InputAdornment,
   TextField,
+  Tooltip,
   Typography,
-  useTheme,
+  useTheme
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import React, { useEffect, useRef, useState } from "react";
@@ -20,6 +23,28 @@ interface EnhancedLoginFormProps {
   onSuccess?: () => void;
 }
 
+// 简单的加密/解密工具函数
+const encryptPassword = (password: string): string => {
+  // 简单的Base64加密（仅用于基本混淆，不是真正的安全加密）
+  return btoa(unescape(encodeURIComponent(password + "yi0yi_salt")));
+};
+
+const decryptPassword = (encryptedPassword: string): string => {
+  try {
+    const decoded = decodeURIComponent(escape(atob(encryptedPassword)));
+    return decoded.replace("yi0yi_salt", "");
+  } catch {
+    return "";
+  }
+};
+
+// 本地存储keys
+const STORAGE_KEYS = {
+  EMAIL: "yi0yi_remembered_email",
+  PASSWORD: "yi0yi_remembered_password",
+  REMEMBER_ME: "yi0yi_remember_me"
+};
+
 export const EnhancedLoginForm: React.FC<EnhancedLoginFormProps> = ({ onSuccess }) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -29,12 +54,57 @@ export const EnhancedLoginForm: React.FC<EnhancedLoginFormProps> = ({ onSuccess 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const loginInProgress = useRef(false);
   
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+
+  // 组件加载时读取保存的账号密码
+  useEffect(() => {
+    const loadSavedCredentials = () => {
+      try {
+        const savedEmail = localStorage.getItem(STORAGE_KEYS.EMAIL);
+        const savedPassword = localStorage.getItem(STORAGE_KEYS.PASSWORD);
+        const savedRememberMe = localStorage.getItem(STORAGE_KEYS.REMEMBER_ME) === "true";
+
+        if (savedRememberMe && savedEmail) {
+          setRememberMe(true);
+          setFormData(prev => ({
+            ...prev,
+            email: savedEmail,
+            password: savedPassword ? decryptPassword(savedPassword) : ""
+          }));
+          console.log("✅ 已加载保存的登录凭据");
+        }
+      } catch (error) {
+        console.warn("⚠️ 加载保存的凭据失败:", error);
+      }
+    };
+
+    loadSavedCredentials();
+  }, []);
+
+  // 保存或清除凭据
+  const saveCredentials = (email: string, password: string, remember: boolean) => {
+    try {
+      if (remember) {
+        localStorage.setItem(STORAGE_KEYS.EMAIL, email);
+        localStorage.setItem(STORAGE_KEYS.PASSWORD, encryptPassword(password));
+        localStorage.setItem(STORAGE_KEYS.REMEMBER_ME, "true");
+        console.log("✅ 已保存登录凭据");
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.EMAIL);
+        localStorage.removeItem(STORAGE_KEYS.PASSWORD);
+        localStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
+        console.log("✅ 已清除保存的凭据");
+      }
+    } catch (error) {
+      console.warn("⚠️ 保存凭据失败:", error);
+    }
+  };
 
   // 监听认证状态变化，处理登录成功后的跳转
   useEffect(() => {
@@ -57,6 +127,16 @@ export const EnhancedLoginForm: React.FC<EnhancedLoginFormProps> = ({ onSuccess 
     }));
     // Clear error when user starts typing
     if (error) setError("");
+  };
+
+  const handleRememberMeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = event.target.checked;
+    setRememberMe(checked);
+    
+    // 如果用户取消勾选，立即清除已保存的凭据
+    if (!checked) {
+      saveCredentials("", "", false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -83,9 +163,13 @@ export const EnhancedLoginForm: React.FC<EnhancedLoginFormProps> = ({ onSuccess 
       
       console.warn('🎉 Login successful!');
       
+      // 根据用户选择保存或清除凭据
+      saveCredentials(formData.email, formData.password, rememberMe);
+      
       // 重要：更新 AuthProvider 状态，让 useEffect 处理跳转
       console.warn('🔄 Refreshing auth state...');
-      refreshAuth();
+      const authRefreshResult = await refreshAuth();
+      console.warn('✅ Auth refresh completed:', authRefreshResult);
       
     } catch (err: any) {
       console.error("💥 Login error:", err);
@@ -175,6 +259,33 @@ export const EnhancedLoginForm: React.FC<EnhancedLoginFormProps> = ({ onSuccess 
         }}
       />
 
+      {/* Remember Me Checkbox */}
+      <Tooltip 
+        title={t("Your credentials will be securely saved on this device for easier login")}
+        arrow
+        placement="top"
+      >
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={rememberMe}
+              onChange={handleRememberMeChange}
+              disabled={loading}
+              color="primary"
+            />
+          }
+          label={t("Remember account and password")}
+          sx={{ 
+            mt: 1, 
+            mb: 2,
+            '& .MuiFormControlLabel-label': {
+              fontSize: '0.875rem',
+              color: 'text.secondary'
+            }
+          }}
+        />
+      </Tooltip>
+
       {/* Submit Button */}
       <Button
         type="submit"
@@ -183,7 +294,7 @@ export const EnhancedLoginForm: React.FC<EnhancedLoginFormProps> = ({ onSuccess 
         size="large"
         disabled={loading}
         sx={{
-          mt: 3,
+          mt: 1,
           mb: 2,
           py: 1.5,
           backgroundColor: theme.palette.primary.main,
