@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "identifier": "io.github.clash-verge-rev.clash-verge-rev",
+  "identifier": "io.github.yi0yi-proxy.yi0yi-proxy",
   "productName": "YI0YI-加速器",
   "bundle": {
     "targets": ["app", "dmg"],
@@ -8,7 +8,7 @@
       "frameworks": [],
       "minimumSystemVersion": "10.15",
       "exceptionDomain": "",
-      "signingIdentity": null,
+      "signingIdentity": "-",
       "entitlements": "packages/macos/entitlements.plist",
       "dmg": {}
     }
