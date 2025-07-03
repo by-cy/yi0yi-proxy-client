@@ -101,6 +101,9 @@ jobs:
           args: "--target ${{ matrix.target }} --verbose --bundles ${{ runner.os == 'Windows' && 'msi' || 'app' }}"
           tagName: ${{ github.event.inputs.release_version || github.ref_name }}
           releaseName: "Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}"
+          # 允许覆盖已存在的release
+          releaseId: ${{ github.event.inputs.release_version || github.ref_name }}
+          allowOverwrite: true
           releaseBody: |
             ## 🚀 Yi0Yi Proxy ${{ github.event.inputs.release_version || github.ref_name }}
             
